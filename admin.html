@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dashboard Admin - Presensi PJLP</title>
+  
+  <!-- Tailwind CSS & FontAwesome Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Panggil API Helper -->
+  <script src="api.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .pb-safe { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-safe">
+
+  <!-- HEADER ADMIN -->
+  <header class="bg-indigo-800 text-white p-4 sticky top-0 z-40 shadow-md">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="font-bold text-base leading-tight" id="headerNamaAdmin">-</h1>
+        <p class="text-xs text-indigo-200" id="headerJabatanAdmin">-</p>
+      </div>
+      <span class="bg-indigo-900 text-emerald-300 text-[10px] px-2.5 py-1 rounded-full font-bold border border-emerald-400/30">ADMIN</span>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4 space-y-4">
+    
+    <!-- TAB 1: BERANDA ADMIN -->
+    <section id="tab-beranda" class="space-y-4">
+      <div class="bg-gradient-to-r from-indigo-700 to-blue-800 text-white p-5 rounded-3xl shadow-lg space-y-2">
+        <h3 class="text-base font-bold">Selamat Datang, Admin</h3>
+        <p class="text-xs text-indigo-100">Kelola sistem, pantau rekap presensi seluruh pegawai, dan konfigurasi data instansi dari panel ini.</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-center">
+        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Akses Cepat Pengelolaan</h4>
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <button type="button" onclick="switchTabAdmin('rekap')" class="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center gap-2 hover:bg-indigo-100 transition">
+            <i class="fa-solid fa-clipboard-list text-xl"></i>
+            <span>Rekap Presensi</span>
+          </button>
+          <button type="button" onclick="switchTabAdmin('akun')" class="p-4 bg-blue-50 border border-blue-100 rounded-2xl text-blue-700 font-semibold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition">
+            <i class="fa-solid fa-user-gear text-xl"></i>
+            <span>Profil Admin</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: REKAP SEMUA PEGAWAI -->
+    <section id="tab-rekap" class="hidden space-y-3">
+      <h2 class="font-bold text-slate-800 text-sm">Rekap Presensi & Logbook</h2>
+
+      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+        <div>
+          <label class="block text-[10px] font-semibold text-slate-500 mb-1">Filter Nama Pegawai</label>
+          <select id="filterNamaPegawai" onchange="renderFilteredRekapAdmin()" class="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-600">
+            <option value="ALL">-- Semua Pegawai --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-3" id="rekapAdminList">
+        <p class="text-xs text-center text-slate-400 py-4">Memuat data rekap...</p>
+      </div>
+    </section>
+
+    <!-- TAB 3: AKUN ADMIN -->
+    <section id="tab-akun" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-2">
+        <div class="w-16 h-16 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-2xl font-bold mx-auto border-2 border-indigo-600">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h3 class="font-bold text-slate-800 text-base" id="accNamaAdmin">-</h3>
+        <p class="text-xs text-slate-500 font-semibold" id="accJabatanAdmin">-</p>
+        <p class="text-[11px] text-slate-400" id="accNipAdmin">NIP: -</p>
+      </div>
+
+      <button type="button" onclick="logoutAdmin()" class="w-full bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3 rounded-xl border border-red-200 transition text-xs flex items-center justify-center gap-2">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
+      </button>
+    </section>
+
+  </main>
+
+  <!-- NAVBAR BOTTOM ADMIN -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
+    <div class="max-w-md mx-auto grid grid-cols-3 text-center h-16">
+      <button type="button" onclick="switchTabAdmin('beranda')" id="nav-beranda" class="flex flex-col items-center justify-center text-indigo-700">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[9px] font-medium mt-1">Beranda</span>
+      </button>
+
+      <button type="button" onclick="switchTabAdmin('rekap')" id="nav-rekap" class="flex flex-col items-center justify-center text-slate-400">
+        <i class="fa-solid fa-clipboard-list text-base"></i>
+        <span class="text-[9px] font-medium mt-1">Rekap</span>
+      </button>
+
+      <button type="button" onclick="switchTabAdmin('akun')" id="nav-akun" class="flex flex-col items-center justify-center text-slate-400">
+        <i class="fa-solid fa-circle-user text-base"></i>
+        <span class="text-[9px] font-medium mt-1">Akun</span>
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    var currentAdminUser = null;
+    var rawAdminLogs = [];
+    var masterPegawaiList = [];
+
+    window.onload = function() {
+      var savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        try {
+          currentAdminUser = JSON.parse(savedUser);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (!currentAdminUser) {
+        currentAdminUser = { role: 'ADMIN', nama: 'GIGIH RIDHO RIDHANA, A.Md.', nip: '20002022', jabatan: 'PRANATA KOMPUTER TERAMPIL' };
+      }
+
+      document.getElementById('headerNamaAdmin').innerText = currentAdminUser.nama;
+      document.getElementById('headerJabatanAdmin').innerText = currentAdminUser.jabatan;
+
+      document.getElementById('accNamaAdmin').innerText = currentAdminUser.nama;
+      document.getElementById('accJabatanAdmin').innerText = currentAdminUser.jabatan;
+      document.getElementById('accNipAdmin').innerText = 'NIP: ' + currentAdminUser.nip;
+
+      fetchAdminData();
+    };
+
+    async function fetchAdminData() {
+      const res = await callGAS('getRekapData', { user: currentAdminUser });
+      if (res) {
+        rawAdminLogs = res.logs || [];
+        masterPegawaiList = res.totalPegawai || [];
+
+        var selectEl = document.getElementById('filterNamaPegawai');
+        var optionsHtml = '<option value="ALL">-- Semua Pegawai --</option>';
+        masterPegawaiList.forEach(function(peg) {
+          optionsHtml += '<option value="' + peg.nip + '">' + peg.nama + ' (' + peg.nip + ')</option>';
+        });
+        selectEl.innerHTML = optionsHtml;
+
+        renderFilteredRekapAdmin();
+      }
+    }
+
+    function renderFilteredRekapAdmin() {
+      var selectedNip = document.getElementById('filterNamaPegawai').value;
+      var filtered = rawAdminLogs.filter(function(row) {
+        return selectedNip === 'ALL' || row.nip.toString().trim() === selectedNip.trim();
+      });
+
+      var html = '';
+      filtered.forEach(function(row) {
+        html += '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">' +
+          '<div class="flex justify-between items-start border-b border-slate-100 pb-2">' +
+            '<div>' +
+              '<h4 class="font-bold text-slate-800 text-xs">' + row.nama + '</h4>' +
+              '<p class="text-[10px] text-slate-400">NIP: ' + row.nip + ' | ' + row.tanggal + '</p>' +
+            '</div>' +
+            '<span class="bg-slate-100 text-slate-700 border text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">' + row.statusKode + '</span>' +
+          '</div>' +
+          '<div class="grid grid-cols-2 gap-2 text-xs">' +
+            '<div><span class="text-slate-400 block text-[10px]">Masuk</span><b>' + row.jamMasuk + '</b></div>' +
+            '<div class="text-right"><span class="text-slate-400 block text-[10px]">Pulang</span><b>' + row.jamPulang + '</b></div>' +
+          '</div>' +
+        '</div>';
+      });
+
+      document.getElementById('rekapAdminList').innerHTML = html || '<p class="text-xs text-center text-slate-400 py-4">Tidak ada data.</p>';
+    }
+
+    function switchTabAdmin(tab) {
+      ['beranda', 'rekap', 'akun'].forEach(function(t) {
+        var el = document.getElementById('tab-' + t);
+        if (el) el.classList.add('hidden');
+        var nav = document.getElementById('nav-' + t);
+        if (nav) nav.className = "flex flex-col items-center justify-center text-slate-400";
+      });
+
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      var activeNav = document.getElementById('nav-' + tab);
+      if (activeNav) activeNav.className = "flex flex-col items-center justify-center text-indigo-700";
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
