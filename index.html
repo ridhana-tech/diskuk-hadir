@@ -308,32 +308,43 @@
   </div>
 
 
-  <!-- ==================== MODAL POPUP KAMERA / AMBIL FOTO ==================== -->
+  <!-- ==================== MODAL POPUP KAMERA LIVE STREAM ==================== -->
   <div id="modalKamera" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-center relative">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-center relative shadow-2xl">
       <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-800 text-sm" id="modalTitle">Foto Presensi</h3>
+        <h3 class="font-bold text-slate-800 text-sm" id="modalTitle">Foto Presensi Selfie</h3>
         <button type="button" onclick="closeModalKamera()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div class="space-y-3">
+        <!-- Frame Pratinjau Kamera / Foto Hasil Tangkapan -->
         <div class="relative w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden shadow-inner border-2 border-blue-600 flex items-center justify-center">
+          <!-- Video Stream Kamera Langsung -->
+          <video id="webcamVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+          
+          <!-- Pratinjau Hasil Tangkapan Foto -->
           <img id="capturedImg" class="w-full h-full object-cover hidden">
-          <div id="placeholderKamera" class="text-slate-400 text-xs p-4 flex flex-col items-center justify-center space-y-2">
-            <i class="fa-solid fa-camera text-4xl text-blue-500"></i>
-            <span>Silakan ambil foto selfie Anda untuk presensi</span>
-          </div>
+          
+          <!-- Canvas Tersembunyi untuk Render Foto -->
+          <canvas id="webcamCanvas" class="hidden"></canvas>
         </div>
 
-        <input type="file" id="cameraInput" accept="image/*" capture="user" class="hidden" onchange="previewImage(event)">
+        <!-- Tombol Aksi Kamera -->
+        <div id="kameraActionBtns" class="space-y-2">
+          <button type="button" onclick="takeSnapshot()" id="btnTakeSnapshot" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-camera"></i> Ambil Foto Selfie
+          </button>
+        </div>
 
-        <button type="button" onclick="document.getElementById('cameraInput').click()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-camera"></i> Buka Kamera / Ambil Foto
-        </button>
+        <div id="confirmActionBtns" class="hidden space-y-2">
+          <button type="button" onclick="retakePhoto()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Foto Ulang
+          </button>
 
-        <button type="button" onclick="confirmAndSend()" id="btnKirim" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition hidden items-center justify-center gap-1">
-          <i class="fa-solid fa-paper-plane mr-1"></i> Kirim Presensi
-        </button>
+          <button type="button" onclick="confirmAndSend()" id="btnKirim" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-paper-plane mr-1"></i> Kirim Presensi
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -349,6 +360,7 @@
     var kantorCircle = null;
     var appConfig = null;
     var capturedBase64 = null;
+    var mediaStream = null;
     var activeTab = 'beranda';
     var todayPresensiStatus = { hasMasuk: false, hasPulang: false };
     var selectedUploadMonth = null;
@@ -555,6 +567,7 @@
       }
     }
 
+    // Membuka modal dan mengaktifkan kamera depan
     function openModalKamera() {
       var titleText = 'Presensi Masuk';
       if (todayPresensiStatus.hasMasuk && !todayPresensiStatus.hasPulang) {
@@ -562,35 +575,117 @@
       }
       document.getElementById('modalTitle').innerText = titleText;
 
+      // Reset tampilan komponen
       capturedBase64 = null;
       document.getElementById('capturedImg').classList.add('hidden');
-      document.getElementById('placeholderKamera').classList.remove('hidden');
-      document.getElementById('btnKirim').classList.add('hidden');
-      document.getElementById('cameraInput').value = '';
+      document.getElementById('webcamVideo').classList.remove('hidden');
+      document.getElementById('kameraActionBtns').classList.remove('hidden');
+      document.getElementById('confirmActionBtns').classList.add('hidden');
 
       document.getElementById('modalKamera').classList.remove('hidden');
+
+      // Jalankan stream kamera depan (facingMode: user)
+      startWebcam();
     }
 
+    // Fungsi untuk mengaktifkan stream webcam browser
+    function startWebcam() {
+      var constraints = {
+        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
+        audio: false
+      };
+
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+          mediaStream = stream;
+          var videoEl = document.getElementById('webcamVideo');
+          videoEl.srcObject = stream;
+        })
+        .catch(function(err) {
+          console.error("Gagal mengaktifkan kamera:", err);
+          alert("Gagal mengaktifkan kamera. Pastikan izin akses kamera telah diberikan di browser Anda.");
+          closeModalKamera();
+        });
+    }
+
+    // Menghentikan stream kamera
+    function stopWebcam() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(function(track) {
+          track.stop();
+        });
+        mediaStream = null;
+      }
+    }
+
+    // Menutup modal kamera
     function closeModalKamera() {
+      stopWebcam();
       document.getElementById('modalKamera').classList.add('hidden');
     }
 
-    function previewImage(event) {
-      var file = event.target.files[0];
-      if (!file) return;
+    // Mengambil foto tangkapan layar dari stream video kamera
+    function takeSnapshot() {
+      var videoEl = document.getElementById('webcamVideo');
+      var canvasEl = document.getElementById('webcamCanvas');
+      var imgEl = document.getElementById('capturedImg');
 
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        capturedBase64 = e.target.result;
-        
-        var imgEl = document.getElementById('capturedImg');
-        imgEl.src = capturedBase64;
-        imgEl.classList.remove('hidden');
-        document.getElementById('placeholderKamera').classList.add('hidden');
-        document.getElementById('btnKirim').classList.remove('hidden');
-      };
-      reader.readAsDataURL(file);
+      if (!videoEl.srcObject) {
+        return alert("Stream kamera belum siap!");
+      }
+
+      var width = videoEl.videoWidth || 640;
+      var height = videoEl.videoHeight || 640;
+
+      canvasEl.width = width;
+      canvasEl.height = height;
+
+      var ctx = canvasEl.getContext('2d');
+      ctx.drawImage(videoEl, 0, 0, width, height);
+
+      // Konversi hasil tangkapan layar ke format JPEG Base64
+      capturedBase64 = canvasEl.toDataURL('image/jpeg', 0.85);
+
+      // Tampilkan foto hasil tangkapan
+      imgEl.src = capturedBase64;
+      imgEl.classList.remove('hidden');
+      videoEl.classList.add('hidden');
+
+      // Sembunyikan tombol ambil foto, tampilkan tombol konfirmasi & foto ulang
+      document.getElementById('kameraActionBtns').classList.add('hidden');
+      document.getElementById('confirmActionBtns').classList.remove('hidden');
+
+      // Hentikan stream kamera aktif untuk menghemat daya
+      stopWebcam();
     }
+
+    // Fungsi untuk mengulang foto jika hasil belum pas
+    function retakePhoto() {
+      capturedBase64 = null;
+      document.getElementById('capturedImg').classList.add('hidden');
+      document.getElementById('webcamVideo').classList.remove('hidden');
+      document.getElementById('kameraActionBtns').classList.remove('hidden');
+      document.getElementById('confirmActionBtns').classList.add('hidden');
+
+      startWebcam();
+    }
+
+    // function previewImage(event) {
+    //   var file = event.target.files[0];
+    //   if (!file) return;
+
+    //   var reader = new FileReader();
+    //   reader.onload = function(e) {
+    //     capturedBase64 = e.target.result;
+        
+    //     var imgEl = document.getElementById('capturedImg');
+    //     imgEl.src = capturedBase64;
+    //     imgEl.classList.remove('hidden');
+    //     document.getElementById('placeholderKamera').classList.add('hidden');
+    //     document.getElementById('btnKirim').classList.remove('hidden');
+    //   };
+    //   reader.readAsDataURL(file);
+    // }
 
     async function confirmAndSend() {
       if (!currentLat || !currentLng) return alert("GPS belum terkunci!");
