@@ -349,7 +349,7 @@
             <i class="fa-solid fa-rotate-left mr-1"></i> Foto Ulang
           </button>
 
-          <button type="button" onclick="confirmAndSend()" id="btnKirim" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1">
+          <button type="button" onclick="confirmAndSend()" id="btnPresensiMasuk" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1">
             <i class="fa-solid fa-paper-plane mr-1"></i> Kirim Presensi
           </button>
         </div>
@@ -510,21 +510,35 @@
       loadData();
     }
 
+    let lastFetchTime = 0;
+
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(
         function(pos) {
           currentLat = pos.coords.latitude;
           currentLng = pos.coords.longitude;
           
-          document.getElementById('berandaLokasi').innerText = 'Koordinat (' + currentLat.toFixed(4) + ', ' + currentLng.toFixed(4) + ')';
+          // Update koordinat angka langsung di UI (ringan dan real-time)
           document.getElementById('berandaKoordinat').innerText = 'Lat: ' + currentLat.toFixed(6) + ' | Long: ' + currentLng.toFixed(6);
           document.getElementById('presensiTitikLokasi').innerText = 'Lat: ' + currentLat.toFixed(6) + ' | Long: ' + currentLng.toFixed(6);
 
-          fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + currentLat + '&lon=' + currentLng)
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-              if (data && data.display_name) document.getElementById('berandaLokasi').innerText = data.display_name;
-            }).catch(function(e) { console.log(e); });
+          var now = Date.now();
+          // Lakukan fetch nama jalan ke Nominatim HANYA JIKA sudah lewat 30 detik dari fetch terakhir
+          // (Untuk menghindari terlalu banyak request / rate limit dari OpenStreetMap)
+          if (now - lastFetchTime > 30000 || lastFetchTime === 0) {
+            lastFetchTime = now;
+            
+            fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + currentLat + '&lon=' + currentLng)
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                if (data && data.display_name) {
+                  document.getElementById('berandaLokasi').innerText = data.display_name;
+                }
+              })
+              .catch(function(e) { 
+                console.log("Gagal memuat nama lokasi:", e); 
+              });
+          }
 
           checkRadius();
           updateMap();
@@ -535,6 +549,63 @@
         { enableHighAccuracy: true }
       );
     }
+
+    function cekBatasWaktuPresensi() {
+      if (!currentUser) return;
+
+      // Ambil kode/nama shift pegawai (contoh: "S01", "SIANG", "SREG", dll)
+      var shiftCode = (currentUser.shift || 'SREG').toString().toUpperCase();
+      var jamMasukStr = "07:30:00"; // Default Reguler / Pagi
+
+      // Tentukan jam masuk berdasarkan master shift
+      if (shiftCode.indexOf('S02') !== -1 || shiftCode.indexOf('SIANG') !== -1) {
+        jamMasukStr = "14:00:00"; // Shift Siang (buka presensi 13:30)
+      } else if (shiftCode.indexOf('S03') !== -1 || shiftCode.indexOf('MALAM') !== -1) {
+        jamMasukStr = "20:00:00"; // Shift Malam (buka presensi 19:30)
+      } else if (shiftCode.indexOf('S01') !== -1 || shiftCode.indexOf('PAGI') !== -1) {
+        jamMasukStr = "07:30:00"; // Shift Pagi (buka presensi 07:00)[cite: 2]
+      } else {
+        jamMasukStr = "07:30:00"; // Default SREG (buka presensi 07:00)[cite: 2]
+      }
+
+      var parts = jamMasukStr.split(':');
+      var targetHour = parseInt(parts[0], 10);
+      var targetMinute = parseInt(parts[1], 10);
+
+      // Hitung total menit dari jam masuk dikurangi 30 menit
+      var totalMenitMasuk = (targetHour * 60) + targetMinute;
+      var totalMenitBuka = totalMenitMasuk - 30;
+
+      var now = new Date();
+      var totalMenitSekarang = (now.getHours() * 60) + now.getMinutes();
+
+      var btnPresensi = document.getElementById('btnPresensiMasuk');
+      if (!btnPresensi) return;
+
+      // Format jam buka untuk teks pemberitahuan
+      var bukaHour = Math.floor(totalMenitBuka / 60);
+      var bukaMinute = totalMenitBuka % 60;
+      var jamBukaFormatted = String(bukaHour).padStart(2, '0') + ':' + String(bukaMinute).padStart(2, '0');
+
+      // Cek apakah sudah melewati hari baru atau belum waktunya
+      if (totalMenitSekarang < totalMenitBuka) {
+        // Tombol abu-abu dan dinonaktifkan jika belum pukul 30 menit sebelum shift
+        btnPresensi.disabled = true;
+        btnPresensi.className = "w-full bg-slate-200 text-slate-400 font-semibold py-3.5 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2";
+        btnPresensi.innerHTML = '<i class="fa-solid fa-clock"></i> Presensi Buka Pukul ' + jamBukaFormatted + ' WIB';
+      } else {
+        // Tombol aktif warna biru jika sudah memasuki rentang waktu presensi
+        btnPresensi.disabled = false;
+        btnPresensi.className = "w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-700/30 transition flex items-center justify-center gap-2";
+        btnPresensi.innerHTML = '<i class="fa-solid fa-camera"></i> Lakukan Presensi Masuk';
+      }
+    }
+
+    // Jalankan pengecekan saat halaman selesai dimuat dan perbarui setiap 1 menit
+    window.addEventListener('load', function() {
+      cekBatasWaktuPresensi();
+      setInterval(cekBatasWaktuPresensi, 60000);
+    });
 
     function checkRadius() {
       if (!appConfig || !currentLat || !currentLng) return;
@@ -720,7 +791,7 @@
         type: tipePresensi
       };
 
-      var btn = document.getElementById('btnKirim');
+      var btn = document.getElementById('btnPresensiMasuk');
       btn.disabled = true;
       btn.innerText = 'Mengirim...';
 
