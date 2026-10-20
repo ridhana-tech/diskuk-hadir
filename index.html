@@ -88,7 +88,7 @@
           </div>
         </div>
 
-        <!-- REKAP PRESENSI BULAN BERJALAN -->
+        <!-- REKAP PRESENSI BULAN BERJALAN (HADIR, TERLAMBAT, IZIN) -->
         <div class="space-y-2">
           <div class="text-center space-y-0.5">
             <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Rekap Presensi</h3>
@@ -96,14 +96,20 @@
           </div>
 
           <div class="grid grid-cols-3 gap-2 pt-1">
-            <div class="bg-emerald-100/80 border border-emerald-200/60 rounded-2xl p-4 text-center shadow-sm flex items-center justify-center">
-              <p class="text-2xl font-extrabold text-slate-800" id="statHadir">0 hari</p>
+            <!-- Card Hadir -->
+            <div class="bg-emerald-100/80 border border-emerald-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-emerald-800 uppercase block">Hadir</span>
+              <p class="text-xl font-extrabold text-slate-800" id="statHadir">0 hari</p>
             </div>
-            <div class="bg-amber-100/80 border border-amber-200/60 rounded-2xl p-4 text-center shadow-sm flex items-center justify-center">
-              <p class="text-2xl font-extrabold text-slate-800" id="statTerlambat">0 hari</p>
+            <!-- Card Terlambat -->
+            <div class="bg-amber-100/80 border border-amber-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-amber-800 uppercase block">Terlambat</span>
+              <p class="text-xl font-extrabold text-slate-800" id="statTerlambat">0 hari</p>
             </div>
-            <div class="bg-rose-100/80 border border-rose-200/60 rounded-2xl p-4 text-center shadow-sm flex items-center justify-center">
-              <p class="text-2xl font-extrabold text-slate-800" id="statTidakMasuk">0 hari</p>
+            <!-- Card Izin -->
+            <div class="bg-blue-100/80 border border-blue-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-blue-800 uppercase block">Izin</span>
+              <p class="text-xl font-extrabold text-slate-800" id="statIzin">0 hari</p>
             </div>
           </div>
         </div>
@@ -199,6 +205,8 @@
           <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">NIPJLP</span><span class="font-bold text-slate-700" id="accNip">-</span></div>
           <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Nomor Telepon</span><span class="font-bold text-slate-700" id="accNoHp">-</span></div>
           <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Tempat, Tanggal Lahir</span><span class="font-bold text-slate-700" id="accTtl">-</span></div>
+          <!-- Baris Nama Atasan -->
+          <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Atasan Langsung</span><span class="font-bold text-slate-700" id="accAtasan">-</span></div>
         </div>
 
         <button type="button" onclick="logout()" class="w-full bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3 rounded-xl border border-red-200 transition text-xs flex items-center justify-center gap-2">
@@ -417,17 +425,35 @@
       }
     }
 
+    // Fungsi untuk membuat ID Unik Perangkat (Pengganti IMEI berbasis browser)
+      function getOrCreateDeviceImei() {
+        var deviceId = localStorage.getItem('device_unique_imei');
+        if (!deviceId) {
+          // Buat kombinasi unik acak berdasarkan timestamp dan random string
+          deviceId = 'DEV-' + Math.random().toString(36).substring(2, 9).toUpperCase() + '-' + Date.now();
+          localStorage.setItem('device_unique_imei', deviceId);
+        }
+        return deviceId;
+      }
+
     async function login() {
       var nip = document.getElementById('loginNip').value;
       var pass = document.getElementById('loginPassword').value;
       if (!nip || !pass) return alert('Isi NIPJLP dan Password!');
 
+      // Ambil atau generate ID unik perangkat
+      var currentDeviceImei = getOrCreateDeviceImei();
+
       var btn = document.getElementById('btnLogin');
       btn.disabled = true;
       btn.innerText = 'Memproses...';
 
-      // Panggil API Backend via callGAS()
-      const res = await callGAS('login', { nip: nip, password: pass });
+      // Kirim data ke backend GAS lewat api.js
+      const res = await callGAS('login', { 
+        nip: nip, 
+        password: pass, 
+        deviceImei: currentDeviceImei 
+      });
       
       btn.disabled = false;
       btn.innerText = 'Masuk Akun';
@@ -460,6 +486,8 @@
       document.getElementById('accNama').innerText = user.nama;
       document.getElementById('accJabatan').innerText = user.jabatan;
       document.getElementById('accNip').innerText = user.nip;
+
+      document.getElementById('accAtasan').innerText = user.atasan || '-';
 
       var displayHp = user.noHp || '-';
       if (displayHp !== '-' && !displayHp.startsWith('0') && !displayHp.startsWith('+')) {
@@ -670,23 +698,7 @@
       startWebcam();
     }
 
-    // function previewImage(event) {
-    //   var file = event.target.files[0];
-    //   if (!file) return;
-
-    //   var reader = new FileReader();
-    //   reader.onload = function(e) {
-    //     capturedBase64 = e.target.result;
-        
-    //     var imgEl = document.getElementById('capturedImg');
-    //     imgEl.src = capturedBase64;
-    //     imgEl.classList.remove('hidden');
-    //     document.getElementById('placeholderKamera').classList.add('hidden');
-    //     document.getElementById('btnKirim').classList.remove('hidden');
-    //   };
-    //   reader.readAsDataURL(file);
-    // }
-
+    
     async function confirmAndSend() {
       if (!currentLat || !currentLng) return alert("GPS belum terkunci!");
       if (!capturedBase64) return alert("Silakan ambil foto selfie terlebih dahulu!");
@@ -897,7 +909,7 @@
       rawLogsData = res.logs || [];
       var uploadedLogbookList = res.logbook || [];
 
-      var countHadir = 0, countTerlambat = 0, countTap = 0;
+      var countHadir = 0, countTerlambat = 0, countIzin = 0;
       var now = new Date();
       var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
       var dayOfWeekToday = now.getDay();
@@ -921,32 +933,31 @@
       rawLogsData.forEach(function(row) {
         var rowDate = new Date(row.tanggal);
         if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) {
-          if (row.statusKode === 'H' || row.statusKode === 'H(PC)') countHadir++;
-          else if (row.statusKode === 'H(T)') countTerlambat++;
-          else if (row.statusKode === 'H(TAP)') countTap++;
+          if (row.hadir === 'H') countHadir++;
+          if (row.terlambat === '(T)') countTerlambat++;
+          if (row.izin && row.izin !== '-') countIzin++;
         }
 
-        if (row.tanggal === todayStr) {
-          if (row.hasMasuk) {
+        if (row.tanggal && row.tanggal.startsWith(todayStr)) {
+          if (row.tipe === 'MASUK') {
             todayPresensiStatus.hasMasuk = true;
-            document.getElementById('todayJamMasuk').innerText = row.jamMasuk;
-            document.getElementById('todayJamMasuk').className = 'text-lg font-extrabold text-emerald-900';
+            document.getElementById('todayJamMasuk').innerText = row.jamMasuk || '--:--:--';
           }
-          if (row.hasPulang) {
+          if (row.tipe === 'PULANG') {
             todayPresensiStatus.hasPulang = true;
-            document.getElementById('todayJamPulang').innerText = row.jamPulang;
-            document.getElementById('todayJamPulang').className = 'text-lg font-extrabold text-amber-900';
+            document.getElementById('todayJamPulang').innerText = row.jamPulang || '--:--:--';
           }
         }
       });
 
+      // Tampilkan ke 3 card rekap beranda
       document.getElementById('statHadir').innerText = countHadir + ' hari';
       document.getElementById('statTerlambat').innerText = countTerlambat + ' hari';
-      document.getElementById('statTidakMasuk').innerText = countTap + ' hari';
+      document.getElementById('statIzin').innerText = countIzin + ' hari';
 
       renderFilteredRekap();
 
-      // Render Tab Logbook
+      // Render Tab Logbook Bulanan
       var currentMonthIdx = now.getMonth();
       var currentYear = now.getFullYear();
       var htmlLogbook = '';

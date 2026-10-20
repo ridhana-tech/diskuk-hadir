@@ -2,9 +2,9 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Dashboard Admin - Presensi PJLP</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - System Presensi PJLP</title>
+
   <!-- Tailwind CSS & FontAwesome Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,109 +14,265 @@
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-    body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
-    .pb-safe { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+    body { font-family: 'Poppins', sans-serif; }
+    /* Style kustom scrollbar untuk tabel desktop */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-safe">
+<body class="bg-slate-100 text-slate-800 antialiased">
 
-  <!-- HEADER ADMIN -->
-  <header class="bg-indigo-800 text-white p-4 sticky top-0 z-40 shadow-md">
-    <div class="max-w-md mx-auto flex justify-between items-center">
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- ==================== SIDEBAR KIRI ==================== -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between shrink-0 shadow-xl">
       <div>
-        <h1 class="font-bold text-base leading-tight" id="headerNamaAdmin">-</h1>
-        <p class="text-xs text-indigo-200" id="headerJabatanAdmin">-</p>
-      </div>
-      <span class="bg-indigo-900 text-emerald-300 text-[10px] px-2.5 py-1 rounded-full font-bold border border-emerald-400/30">ADMIN</span>
-    </div>
-  </header>
-
-  <main class="max-w-md mx-auto p-4 space-y-4">
-    
-    <!-- TAB 1: BERANDA ADMIN -->
-    <section id="tab-beranda" class="space-y-4">
-      <div class="bg-gradient-to-r from-indigo-700 to-blue-800 text-white p-5 rounded-3xl shadow-lg space-y-2">
-        <h3 class="text-base font-bold">Selamat Datang, Admin</h3>
-        <p class="text-xs text-indigo-100">Kelola sistem, pantau rekap presensi seluruh pegawai, dan konfigurasi data instansi dari panel ini.</p>
-      </div>
-
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-center">
-        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Akses Cepat Pengelolaan</h4>
-        <div class="grid grid-cols-2 gap-3 pt-1">
-          <button type="button" onclick="switchTabAdmin('rekap')" class="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center gap-2 hover:bg-indigo-100 transition">
-            <i class="fa-solid fa-clipboard-list text-xl"></i>
-            <span>Rekap Presensi</span>
-          </button>
-          <button type="button" onclick="switchTabAdmin('akun')" class="p-4 bg-blue-50 border border-blue-100 rounded-2xl text-blue-700 font-semibold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition">
-            <i class="fa-solid fa-user-gear text-xl"></i>
-            <span>Profil Admin</span>
-          </button>
+        <!-- BRAND LOGO HEADER -->
+        <div class="p-5 border-b border-slate-800 flex items-center gap-3">
+          <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-600/30">
+            <i class="fa-solid fa-fingerprint"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-white text-sm tracking-wide">PRESENSI PJLP</h1>
+            <p class="text-[11px] text-slate-400">Admin Control Panel</p>
+          </div>
         </div>
+
+        <!-- MENU NAVIGASI KIRI -->
+        <nav class="p-4 space-y-1.5 text-xs font-medium">
+          <button type="button" onclick="switchAdminMenu('dashboard')" id="menu-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20">
+            <i class="fa-solid fa-chart-pie text-base w-5"></i>
+            <span>Dashboard & Statistik</span>
+          </button>
+
+          <button type="button" onclick="switchAdminMenu('pegawai')" id="menu-pegawai" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-slate-400 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-users text-base w-5"></i>
+            <span>Data Pegawai</span>
+          </button>
+
+          <button type="button" onclick="switchAdminMenu('settings')" id="menu-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-slate-400 hover:bg-slate-800 hover:text-white">
+            <i class="fa-solid fa-sliders text-base w-5"></i>
+            <span>Pengaturan System</span>
+          </button>
+        </nav>
       </div>
-    </section>
 
-    <!-- TAB 2: REKAP SEMUA PEGAWAI -->
-    <section id="tab-rekap" class="hidden space-y-3">
-      <h2 class="font-bold text-slate-800 text-sm">Rekap Presensi & Logbook</h2>
+      <!-- BOTTOM SIDEBAR (PROFILE ADMIN & LOGOUT) -->
+      <div class="p-4 border-t border-slate-800 space-y-3">
+        <div class="flex items-center gap-3 p-2 bg-slate-800/60 rounded-xl">
+          <div class="w-9 h-9 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-bold shrink-0">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div class="overflow-hidden">
+            <h4 class="font-bold text-white text-xs truncate" id="sideAdminNama">GIGIH RIDHO R.</h4>
+            <p class="text-[10px] text-slate-400 truncate" id="sideAdminNip">NIP: 20002022</p>
+          </div>
+        </div>
 
-      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+        <button type="button" onclick="logoutAdmin()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold transition">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Keluar (Logout)</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================== KONTEN UTAMA (RIGHT CONTENT AREA) ==================== -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+      <!-- TOP HEADER BAR -->
+      <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center shrink-0">
         <div>
-          <label class="block text-[10px] font-semibold text-slate-500 mb-1">Filter Nama Pegawai</label>
-          <select id="filterNamaPegawai" onchange="renderFilteredRekapAdmin()" class="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-600">
-            <option value="ALL">-- Semua Pegawai --</option>
-          </select>
+          <h2 class="text-lg font-bold text-slate-800" id="pageTitle">Dashboard & Statistik Presensi</h2>
+          <p class="text-xs text-slate-500" id="currentDateStr">-</p>
         </div>
-      </div>
 
-      <div class="space-y-3" id="rekapAdminList">
-        <p class="text-xs text-center text-slate-400 py-4">Memuat data rekap...</p>
-      </div>
-    </section>
-
-    <!-- TAB 3: AKUN ADMIN -->
-    <section id="tab-akun" class="hidden space-y-4">
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-2">
-        <div class="w-16 h-16 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-2xl font-bold mx-auto border-2 border-indigo-600">
-          <i class="fa-solid fa-user-shield"></i>
+        <div class="flex items-center gap-4">
+          <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> System Online
+          </span>
         </div>
-        <h3 class="font-bold text-slate-800 text-base" id="accNamaAdmin">-</h3>
-        <p class="text-xs text-slate-500 font-semibold" id="accJabatanAdmin">-</p>
-        <p class="text-[11px] text-slate-400" id="accNipAdmin">NIP: -</p>
-      </div>
+      </header>
 
-      <button type="button" onclick="logoutAdmin()" class="w-full bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3 rounded-xl border border-red-200 transition text-xs flex items-center justify-center gap-2">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
-      </button>
-    </section>
+      <!-- CONTENT BODY (SCROLLABLE AREA) -->
+      <main class="flex-1 overflow-y-auto p-8 space-y-6">
 
-  </main>
+        <!-- ==================== SECTION 1: DASHBOARD & STATISTIK ==================== -->
+        <section id="section-dashboard" class="space-y-6">
+          
+          <!-- GRID KARTU STATISTIK UTAMA -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-1">Total Pegawai PJLP</span>
+                <p class="text-3xl font-extrabold text-slate-800" id="statTotalPegawai">0</p>
+                <span class="text-[11px] text-slate-500 font-medium block mt-1">Pegawai Aktif</span>
+              </div>
+              <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-users"></i>
+              </div>
+            </div>
 
-  <!-- NAVBAR BOTTOM ADMIN -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
-    <div class="max-w-md mx-auto grid grid-cols-3 text-center h-16">
-      <button type="button" onclick="switchTabAdmin('beranda')" id="nav-beranda" class="flex flex-col items-center justify-center text-indigo-700">
-        <i class="fa-solid fa-house text-base"></i>
-        <span class="text-[9px] font-medium mt-1">Beranda</span>
-      </button>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-emerald-600 block uppercase tracking-wider mb-1">Hadir Tepat Waktu</span>
+                <p class="text-3xl font-extrabold text-emerald-900" id="statHadirHariIni">0</p>
+                <span class="text-[11px] text-emerald-600 font-medium block mt-1">Hari ini</span>
+              </div>
+              <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+            </div>
 
-      <button type="button" onclick="switchTabAdmin('rekap')" id="nav-rekap" class="flex flex-col items-center justify-center text-slate-400">
-        <i class="fa-solid fa-clipboard-list text-base"></i>
-        <span class="text-[9px] font-medium mt-1">Rekap</span>
-      </button>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-amber-600 block uppercase tracking-wider mb-1">Terlambat</span>
+                <p class="text-3xl font-extrabold text-amber-900" id="statTerlambatHariIni">0</p>
+                <span class="text-[11px] text-amber-600 font-medium block mt-1">Hari ini</span>
+              </div>
+              <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-clock"></i>
+              </div>
+            </div>
 
-      <button type="button" onclick="switchTabAdmin('akun')" id="nav-akun" class="flex flex-col items-center justify-center text-slate-400">
-        <i class="fa-solid fa-circle-user text-base"></i>
-        <span class="text-[9px] font-medium mt-1">Akun</span>
-      </button>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-rose-600 block uppercase tracking-wider mb-1">Belum Presensi</span>
+                <p class="text-3xl font-extrabold text-rose-900" id="statTidakHadirHariIni">0</p>
+                <span class="text-[11px] text-rose-600 font-medium block mt-1">Hari ini</span>
+              </div>
+              <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-user-xmark"></i>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- TABEL MONITORING PRESENSI HARI INI DESKTOP -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 class="font-bold text-slate-800 text-sm">Monitoring Real-Time Presensi Hari Ini</h3>
+                <p class="text-xs text-slate-500">Daftar kehadiran seluruh pegawai secara rinci</p>
+              </div>
+              <button type="button" onclick="fetchAdminData()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> Refresh Data
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-100">
+                  <tr>
+                    <th class="p-4">Pegawai</th>
+                    <th class="p-4">NIPJLP</th>
+                    <th class="p-4">Shift</th>
+                    <th class="p-4">Jam Masuk</th>
+                    <th class="p-4">Jam Pulang</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4">Lokasi & Jarak</th>
+                  </tr>
+                </thead>
+                <tbody id="tableMonitoringHariIni" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="7" class="p-6 text-center text-slate-400">Memuat data presensi...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+
+        <!-- ==================== SECTION 2: MANAGEMENT PEGAWAI ==================== -->
+        <section id="section-pegawai" class="hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">Master Data Pegawai PJLP</h3>
+                <p class="text-xs text-slate-500">Daftar seluruh pegawai terdaftar pada sistem</p>
+              </div>
+              
+              <div class="flex items-center gap-3">
+                <input type="text" id="searchPegawaiInput" onkeyup="filterPegawaiTable()" placeholder="Cari nama / NIP..." class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 w-64">
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-100">
+                  <tr>
+                    <th class="p-4">NIPJLP</th>
+                    <th class="p-4">Nama Pegawai</th>
+                    <th class="p-4">Jabatan</th>
+                    <th class="p-4">No. Telepon</th>
+                    <th class="p-4">Shift</th>
+                    <th class="p-4">Role</th>
+                    <th class="p-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tableMasterPegawai" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="7" class="p-6 text-center text-slate-400">Memuat data master pegawai...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ==================== SECTION 3: SETTINGS ==================== -->
+        <section id="section-settings" class="hidden space-y-6">
+          <div class="max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base border-b border-slate-100 pb-3">Pengaturan Konfigurasi Kantor & Radius</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div class="space-y-1">
+                <label class="font-semibold text-slate-600 block">Latitude Kantor</label>
+                <input type="text" id="cfgLatKantor" value="-7.5958" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              </div>
+
+              <div class="space-y-1">
+                <label class="font-semibold text-slate-600 block">Longitude Kantor</label>
+                <input type="text" id="cfgLongKantor" value="110.9525" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              </div>
+
+              <div class="space-y-1 md:col-span-2">
+                <label class="font-semibold text-slate-600 block">Radius Toleransi Presensi (Meter)</label>
+                <input type="number" id="cfgRadiusMeter" value="50" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <button type="button" onclick="alert('Pengaturan disimpan!')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-6 py-3 rounded-xl shadow-md transition">
+                Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
     </div>
-  </nav>
+
+  </div>
 
   <script>
     var currentAdminUser = null;
-    var rawAdminLogs = [];
+    var rawLogsData = [];
     var masterPegawaiList = [];
 
     window.onload = function() {
+      var now = new Date();
+      var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDateStr').innerText = now.toLocaleDateString('id-ID', options);
+
       var savedUser = localStorage.getItem('currentUser');
       if (savedUser) {
         try {
@@ -130,12 +286,8 @@
         currentAdminUser = { role: 'ADMIN', nama: 'GIGIH RIDHO RIDHANA, A.Md.', nip: '20002022', jabatan: 'PRANATA KOMPUTER TERAMPIL' };
       }
 
-      document.getElementById('headerNamaAdmin').innerText = currentAdminUser.nama;
-      document.getElementById('headerJabatanAdmin').innerText = currentAdminUser.jabatan;
-
-      document.getElementById('accNamaAdmin').innerText = currentAdminUser.nama;
-      document.getElementById('accJabatanAdmin').innerText = currentAdminUser.jabatan;
-      document.getElementById('accNipAdmin').innerText = 'NIP: ' + currentAdminUser.nip;
+      document.getElementById('sideAdminNama').innerText = currentAdminUser.nama;
+      document.getElementById('sideAdminNip').innerText = 'NIP: ' + currentAdminUser.nip;
 
       fetchAdminData();
     };
@@ -143,57 +295,130 @@
     async function fetchAdminData() {
       const res = await callGAS('getRekapData', { user: currentAdminUser });
       if (res) {
-        rawAdminLogs = res.logs || [];
+        rawLogsData = res.logs || [];
         masterPegawaiList = res.totalPegawai || [];
 
-        var selectEl = document.getElementById('filterNamaPegawai');
-        var optionsHtml = '<option value="ALL">-- Semua Pegawai --</option>';
-        masterPegawaiList.forEach(function(peg) {
-          optionsHtml += '<option value="' + peg.nip + '">' + peg.nama + ' (' + peg.nip + ')</option>';
-        });
-        selectEl.innerHTML = optionsHtml;
+        document.getElementById('statTotalPegawai').innerText = masterPegawaiList.length;
 
-        renderFilteredRekapAdmin();
+        renderDashboardStatistik();
+        renderTableMasterPegawai();
       }
     }
 
-    function renderFilteredRekapAdmin() {
-      var selectedNip = document.getElementById('filterNamaPegawai').value;
-      var filtered = rawAdminLogs.filter(function(row) {
-        return selectedNip === 'ALL' || row.nip.toString().trim() === selectedNip.trim();
+    function renderDashboardStatistik() {
+      var now = new Date();
+      var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+      var countHadir = 0;
+      var countTerlambat = 0;
+      var todayMap = {};
+
+      rawLogsData.forEach(function(row) {
+        if (row.tanggal === todayStr) {
+          todayMap[row.nip] = row;
+          if (row.statusKode === 'H' || row.statusKode === 'H(PC)') countHadir++;
+          else if (row.statusKode === 'H(T)') countTerlambat++;
+        }
       });
 
-      var html = '';
-      filtered.forEach(function(row) {
-        html += '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">' +
-          '<div class="flex justify-between items-start border-b border-slate-100 pb-2">' +
-            '<div>' +
-              '<h4 class="font-bold text-slate-800 text-xs">' + row.nama + '</h4>' +
-              '<p class="text-[10px] text-slate-400">NIP: ' + row.nip + ' | ' + row.tanggal + '</p>' +
-            '</div>' +
-            '<span class="bg-slate-100 text-slate-700 border text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">' + row.statusKode + '</span>' +
-          '</div>' +
-          '<div class="grid grid-cols-2 gap-2 text-xs">' +
-            '<div><span class="text-slate-400 block text-[10px]">Masuk</span><b>' + row.jamMasuk + '</b></div>' +
-            '<div class="text-right"><span class="text-slate-400 block text-[10px]">Pulang</span><b>' + row.jamPulang + '</b></div>' +
-          '</div>' +
-        '</div>';
-      });
+      var totalPeg = masterPegawaiList.length;
+      var countTidakHadir = Math.max(0, totalPeg - (countHadir + countTerlambat));
 
-      document.getElementById('rekapAdminList').innerHTML = html || '<p class="text-xs text-center text-slate-400 py-4">Tidak ada data.</p>';
+      document.getElementById('statHadirHariIni').innerText = countHadir;
+      document.getElementById('statTerlambatHariIni').innerText = countTerlambat;
+      document.getElementById('statTidakHadirHariIni').innerText = countTidakHadir;
+
+      var htmlTable = '';
+      if (masterPegawaiList.length === 0) {
+        htmlTable = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data pegawai.</td></tr>';
+      } else {
+        masterPegawaiList.forEach(function(peg) {
+          var log = todayMap[peg.nip];
+          var badgeHtml = '<span class="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Belum Presensi</span>';
+          var jamMasuk = '--:--:--';
+          var jamPulang = '--:--:--';
+          var ket = '-';
+
+          if (log) {
+            jamMasuk = log.jamMasuk;
+            jamPulang = log.jamPulang;
+            ket = log.keterangan + ' (' + log.jarak + ')';
+
+            if (log.statusKode === 'H' || log.statusKode === 'H(PC)') {
+              badgeHtml = '<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Hadir Tepat Waktu</span>';
+            } else if (log.statusKode === 'H(T)') {
+              badgeHtml = '<span class="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Terlambat</span>';
+            }
+          }
+
+          htmlTable += '<tr class="hover:bg-slate-50 transition">' +
+            '<td class="p-4 font-bold text-slate-800">' + peg.nama + '</td>' +
+            '<td class="p-4 font-mono text-slate-600">' + peg.nip + '</td>' +
+            '<td class="p-4 text-slate-600">' + peg.shift + '</td>' +
+            '<td class="p-4 font-semibold text-slate-700">' + jamMasuk + '</td>' +
+            '<td class="p-4 font-semibold text-slate-700">' + jamPulang + '</td>' +
+            '<td class="p-4">' + badgeHtml + '</td>' +
+            '<td class="p-4 text-slate-500 text-[11px]">' + ket + '</td>' +
+          '</tr>';
+        });
+      }
+
+      document.getElementById('tableMonitoringHariIni').innerHTML = htmlTable;
     }
 
-    function switchTabAdmin(tab) {
-      ['beranda', 'rekap', 'akun'].forEach(function(t) {
-        var el = document.getElementById('tab-' + t);
-        if (el) el.classList.add('hidden');
-        var nav = document.getElementById('nav-' + t);
-        if (nav) nav.className = "flex flex-col items-center justify-center text-slate-400";
+    function renderTableMasterPegawai() {
+      var html = '';
+      if (masterPegawaiList.length === 0) {
+        html = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Tidak ada data pegawai.</td></tr>';
+      } else {
+        masterPegawaiList.forEach(function(peg) {
+          html += '<tr class="hover:bg-slate-50 transition">' +
+            '<td class="p-4 font-mono text-slate-700 font-bold">' + peg.nip + '</td>' +
+            '<td class="p-4 font-bold text-slate-800">' + peg.nama + '</td>' +
+            '<td class="p-4 text-slate-600">Pegawai PJLP</td>' +
+            '<td class="p-4 text-slate-600">-</td>' +
+            '<td class="p-4"><span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-lg font-semibold">' + peg.shift + '</span></td>' +
+            '<td class="p-4 text-slate-600 font-medium">PEGAWAI</td>' +
+            '<td class="p-4"><span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">Aktif</span></td>' +
+          '</tr>';
+        });
+      }
+      document.getElementById('tableMasterPegawai').innerHTML = html;
+    }
+
+    function filterPegawaiTable() {
+      var input = document.getElementById("searchPegawaiInput").value.toLowerCase();
+      var rows = document.querySelectorAll("#tableMasterPegawai tr");
+
+      rows.forEach(function(row) {
+        var text = row.innerText.toLowerCase();
+        row.style.display = text.includes(input) ? "" : "none";
+      });
+    }
+
+    function switchAdminMenu(menu) {
+      ['dashboard', 'pegawai', 'settings'].forEach(function(m) {
+        var sec = document.getElementById('section-' + m);
+        if (sec) sec.classList.add('hidden');
+
+        var btn = document.getElementById('menu-' + m);
+        if (btn) {
+          btn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-slate-400 hover:bg-slate-800 hover:text-white";
+        }
       });
 
-      document.getElementById('tab-' + tab).classList.remove('hidden');
-      var activeNav = document.getElementById('nav-' + tab);
-      if (activeNav) activeNav.className = "flex flex-col items-center justify-center text-indigo-700";
+      document.getElementById('section-' + menu).classList.remove('hidden');
+      var activeBtn = document.getElementById('menu-' + menu);
+      if (activeBtn) {
+        activeBtn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20";
+      }
+
+      var titles = {
+        'dashboard': 'Dashboard & Statistik Presensi',
+        'pegawai': 'Manajemen Data Pegawai PJLP',
+        'settings': 'Pengaturan System & Lokasi Kantor'
+      };
+      document.getElementById('pageTitle').innerText = titles[menu] || 'Admin Dashboard';
     }
 
     function logoutAdmin() {
