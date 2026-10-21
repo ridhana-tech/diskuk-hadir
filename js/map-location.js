@@ -65,20 +65,22 @@ function initMap() {
   var mapContainer = document.getElementById('map');
   if (!mapContainer) return;
 
-  // Jika map sudah ada, cukup update ukurannya agar tidak abu-abu/hilang
+  // Jika peta sudah pernah dibuat sebelumnya, cukup update ukurannya
   if (map) {
     setTimeout(function() {
       map.invalidateSize();
       if (currentLat && currentLng) {
         map.setView([currentLat, currentLng], 17);
+        if (userMarker) userMarker.setLatLng([currentLat, currentLng]);
       }
-    }, 100);
+    }, 150);
     return;
   }
 
-  // Buat map baru jika belum ada dan koordinat sudah siap
+  // Jika koordinat GPS sudah didapatkan, buat peta baru
   if (currentLat && currentLng) {
     map = L.map('map').setView([currentLat, currentLng], 17);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
       maxZoom: 19, 
       attribution: '© OpenStreetMap' 
@@ -88,9 +90,17 @@ function initMap() {
 
     if (appConfig && appConfig.config) {
       kantorCircle = L.circle([appConfig.config.latKantor, appConfig.config.longKantor], {
-        color: 'blue', fillColor: '#3b82f6', fillOpacity: 0.2, radius: appConfig.config.radiusMeter
+        color: 'blue', 
+        fillColor: '#3b82f6', 
+        fillOpacity: 0.2, 
+        radius: appConfig.config.radiusMeter
       }).addTo(map);
     }
+    
+    // Paksa invalidateSize setelah peta selesai dimuat
+    setTimeout(function() {
+      map.invalidateSize();
+    }, 200);
   }
 }
 

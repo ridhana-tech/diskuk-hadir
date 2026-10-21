@@ -1,0 +1,25 @@
+/* ==========================================
+   CUSTOM STYLES - APLIKASI PRESENSI PJLP
+   ========================================== */
+
+/* Impor font utama Poppins dari Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Pengaturan dasar body */
+body {
+  font-family: 'Poppins', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Padding bawah aman untuk perangkat mobile dengan navigasi gestur (seperti iPhone atau Android modern) */
+.pb-safe {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+/* Kontainer Peta Leaflet (Wajib memiliki tinggi eksplisit agar peta tidak blank/abu-abu) */
+#map {
+  height: 250px;
+  width: 100%;
+  border-radius: 1.25rem;
+  z-index: 1;
+}
