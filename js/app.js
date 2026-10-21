@@ -65,10 +65,25 @@ function checkAndApplyWeekendButtonState() {
   }
 }
 
+function getFrontendShiftHours(shiftName) {
+  var upper = (shiftName || '').toString().toUpperCase();
+  if (upper.indexOf('PAGI') !== -1 || upper === 'S01') {
+    return { jamMasuk: "06:00:00", jamPulang: "14:00:00" };
+  } else if (upper.indexOf('SIANG') !== -1 || upper === 'S02') {
+    return { jamMasuk: "14:00:00", jamPulang: "21:00:00" };
+  } else if (upper.indexOf('MALAM') !== -1 || upper === 'S03') {
+    return { jamMasuk: "21:00:00", jamPulang: "06:00:00" };
+  } else {
+    return { jamMasuk: "07:30:00", jamPulang: "16:00:00" }; // Reguler
+  }
+}
+
 async function initAppWithUser(user) {
+  // Sembunyikan halaman login dan tampilkan halaman pegawai
   document.getElementById('pageLogin').classList.add('hidden');
   document.getElementById('pagePegawai').classList.remove('hidden');
   
+  // Set informasi header & akun profil
   document.getElementById('headerNama').innerText = user.nama;
   document.getElementById('headerInfo').innerText = 'NIP: ' + user.nip + ' | Shift: ' + user.shift;
   
@@ -84,14 +99,23 @@ async function initAppWithUser(user) {
   document.getElementById('accNoHp').innerText = displayHp;
   document.getElementById('accTtl').innerText = user.ttl || '-';
 
+  var defaultShift = getFrontendShiftHours(user.shift);
+  document.getElementById('jadwalMasuk').innerText = defaultShift.jamMasuk;
+  document.getElementById('jadwalPulang').innerText = defaultShift.jamPulang;
+  
   initPeriodeLabel();
   checkAndApplyWeekendButtonState();
 
+  // Ambil konfigurasi kantor & shift dari backend GAS
   const dataConfig = await callGAS('getAppData', { shift: user.shift });
   if (dataConfig && dataConfig.config) {
     appConfig = dataConfig;
-    document.getElementById('jadwalMasuk').innerText = dataConfig.shiftInfo.jamMasuk;
-    document.getElementById('jadwalPulang').innerText = dataConfig.shiftInfo.jamPulang;
+    
+    // Tampilkan jam masuk & pulang dinamis sesuai shift pegawai dari backend
+    if (dataConfig.shiftInfo) {
+      document.getElementById('jadwalMasuk').innerText = dataConfig.shiftInfo.jamMasuk;
+      document.getElementById('jadwalPulang').innerText = dataConfig.shiftInfo.jamPulang;
+    }
   }
 
   loadData();

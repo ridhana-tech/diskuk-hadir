@@ -62,13 +62,31 @@ function checkRadius() {
 }
 
 function initMap() {
-  if (!map && currentLat && currentLng) {
+  var mapContainer = document.getElementById('map');
+  if (!mapContainer) return;
+
+  // Jika map sudah ada, cukup update ukurannya agar tidak abu-abu/hilang
+  if (map) {
+    setTimeout(function() {
+      map.invalidateSize();
+      if (currentLat && currentLng) {
+        map.setView([currentLat, currentLng], 17);
+      }
+    }, 100);
+    return;
+  }
+
+  // Buat map baru jika belum ada dan koordinat sudah siap
+  if (currentLat && currentLng) {
     map = L.map('map').setView([currentLat, currentLng], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+      maxZoom: 19, 
+      attribution: '© OpenStreetMap' 
+    }).addTo(map);
 
     userMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup("<b>Posisi Anda</b>").openPopup();
 
-    if (appConfig) {
+    if (appConfig && appConfig.config) {
       kantorCircle = L.circle([appConfig.config.latKantor, appConfig.config.longKantor], {
         color: 'blue', fillColor: '#3b82f6', fillOpacity: 0.2, radius: appConfig.config.radiusMeter
       }).addTo(map);
