@@ -29,13 +29,86 @@ window.onload = function() {
         window.location.href = 'admin.html';
         return;
       }
+      document.getElementById('pageLogin').classList.add('hidden');
+      document.getElementById('pagePegawai').classList.remove('hidden');
       initAppWithUser(currentUser);
+      return;
     } catch (e) {
-      console.error("Gagal parse user:", e);
+      localStorage.removeItem('currentUser');
     }
   }
+  
+  // Jika belum login, pastikan halaman login yang tampil
+  document.getElementById('pageLogin').classList.remove('hidden');
+  document.getElementById('pagePegawai').classList.add('hidden');
   startGpsTracking();
 };
+
+// Fungsi pembantu untuk menampilkan Halaman Login
+function showLoginPage() {
+  var pageLogin = document.getElementById('pageLogin');
+  var pagePegawai = document.getElementById('pagePegawai');
+  
+  if (pageLogin) pageLogin.classList.remove('hidden');
+  if (pagePegawai) pagePegawai.classList.add('hidden');
+}
+
+// ==================== PROSES LOGIN FRONTEND ====================
+async function prosesLoginFrontend() {
+  var nipInput = document.getElementById('loginNip').value.trim();
+  var passInput = document.getElementById('loginPassword').value.trim();
+
+  if (!nipInput || !passInput) {
+    return alert('NIP dan Password wajib diisi!');
+  }
+
+  // Generate atau ambil ID unik perangkat/browser untuk parameter deviceImei
+  var deviceImei = localStorage.getItem('device_unique_id');
+  if (!deviceImei) {
+    deviceImei = 'WEB-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('device_unique_id', deviceImei);
+  }
+
+  var btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+  try {
+    // Memanggil fungsi 'processLogin' yang ada di backend Code.gs
+    const res = await callGAS('processLogin', { 
+      nip: nipInput, 
+      password: passInput, 
+      deviceImei: deviceImei 
+    });
+
+    btn.disabled = false;
+    btn.innerHTML = 'Masuk Aplikasi';
+
+    if (res && res.success) {
+      currentUser = res.user;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+      if (currentUser.role === 'ATASAN') {
+        window.location.href = 'atasan.html';
+        return;
+      } else if (currentUser.role === 'ADMIN') {
+        window.location.href = 'admin.html';
+        return;
+      }
+
+      // Sembunyikan halaman login, tampilkan halaman pegawai & muat data
+      document.getElementById('pageLogin').classList.add('hidden');
+      document.getElementById('pagePegawai').classList.remove('hidden');
+      initAppWithUser(currentUser);
+    } else {
+      alert(res ? res.message : 'Gagal login, periksa kembali NIP dan Password.');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Masuk Aplikasi';
+    alert('Terjadi kesalahan koneksi ke server: ' + e.toString());
+  }
+}
 
 function getFrontendShiftHours(shiftName) {
   var upper = (shiftName || '').toString().toUpperCase();
@@ -559,5 +632,26 @@ function convertFileToBase64(file) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
     reader.readAsDataURL(file);
+  });
+}
+
+// ==================== HELPER CALL GAS ====================
+function callGAS(functionName, arg) {
+  return new Promise(function(resolve, reject) {
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      console.warn("Google Apps Script environment tidak terdeteksi (Mode Lokal/Browser biasa).");
+      // Simulasi lokal jika diperlukan untuk testing statis
+      resolve({ success: false, message: 'Google Apps Script environment tidak aktif.' });
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        resolve(result);
+      })
+      .withFailureHandler(function(error) {
+        console.error("GAS Error pada " + functionName + ":", error);
+        reject(error);
+      })[functionName](arg);
   });
 }
