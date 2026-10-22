@@ -13,7 +13,6 @@ function startGpsTracking() {
         document.getElementById('presensiTitikLokasi').innerText = 'Lat: ' + currentLat.toFixed(6) + ' | Long: ' + currentLng.toFixed(6);
 
         var now = Date.now();
-        // Throttle Request Nominatim OpenStreetMap (30 detik sekali)
         if (now - lastFetchTime > 30000 || lastFetchTime === 0) {
           lastFetchTime = now;
           
@@ -52,7 +51,9 @@ function checkRadius() {
   var dist = R * c;
 
   var badge = document.getElementById('radiusBadge');
-  if (dist <= appConfig.config.radiusMeter) {
+  var radiusMaks = (appConfig.config.radiusMeter) ? appConfig.config.radiusMeter : 100;
+  
+  if (dist <= radiusMaks) {
     badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
     badge.innerText = "Kantor Diskuktransesdm";
   } else {
@@ -65,7 +66,6 @@ function initMap() {
   var mapContainer = document.getElementById('map');
   if (!mapContainer) return;
 
-  // Jika peta sudah pernah dibuat sebelumnya, cukup update ukurannya
   if (map) {
     setTimeout(function() {
       map.invalidateSize();
@@ -77,10 +77,8 @@ function initMap() {
     return;
   }
 
-  // Jika koordinat GPS sudah didapatkan, buat peta baru
   if (currentLat && currentLng) {
     map = L.map('map').setView([currentLat, currentLng], 17);
-    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
       maxZoom: 19, 
       attribution: '© OpenStreetMap' 
@@ -90,14 +88,10 @@ function initMap() {
 
     if (appConfig && appConfig.config) {
       kantorCircle = L.circle([appConfig.config.latKantor, appConfig.config.longKantor], {
-        color: 'blue', 
-        fillColor: '#3b82f6', 
-        fillOpacity: 0.2, 
-        radius: appConfig.config.radiusMeter
+        color: 'blue', fillColor: '#3b82f6', fillOpacity: 0.2, radius: appConfig.config.radiusMeter
       }).addTo(map);
     }
     
-    // Paksa invalidateSize setelah peta selesai dimuat
     setTimeout(function() {
       map.invalidateSize();
     }, 200);

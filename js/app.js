@@ -37,6 +37,19 @@ window.onload = function() {
   startGpsTracking();
 };
 
+function getFrontendShiftHours(shiftName) {
+  var upper = (shiftName || '').toString().toUpperCase();
+  if (upper.indexOf('PAGI') !== -1 || upper === 'S01') {
+    return { jamMasuk: "06:00:00", jamPulang: "14:00:00" };
+  } else if (upper.indexOf('SIANG') !== -1 || upper === 'S02') {
+    return { jamMasuk: "14:00:00", jamPulang: "21:00:00" };
+  } else if (upper.indexOf('MALAM') !== -1 || upper === 'S03') {
+    return { jamMasuk: "21:00:00", jamPulang: "06:00:00" };
+  } else {
+    return { jamMasuk: "07:30:00", jamPulang: "16:00:00" }; // Reguler
+  }
+}
+
 function initPeriodeLabel() {
   var now = new Date();
   var dateNowStr = String(now.getDate()).padStart(2, '0') + ' ' + namaBulanIndo[now.getMonth()] + ' ' + now.getFullYear();
@@ -65,25 +78,10 @@ function checkAndApplyWeekendButtonState() {
   }
 }
 
-function getFrontendShiftHours(shiftName) {
-  var upper = (shiftName || '').toString().toUpperCase();
-  if (upper.indexOf('PAGI') !== -1 || upper === 'S01') {
-    return { jamMasuk: "06:00:00", jamPulang: "14:00:00" };
-  } else if (upper.indexOf('SIANG') !== -1 || upper === 'S02') {
-    return { jamMasuk: "14:00:00", jamPulang: "21:00:00" };
-  } else if (upper.indexOf('MALAM') !== -1 || upper === 'S03') {
-    return { jamMasuk: "21:00:00", jamPulang: "06:00:00" };
-  } else {
-    return { jamMasuk: "07:30:00", jamPulang: "16:00:00" }; // Reguler
-  }
-}
-
 async function initAppWithUser(user) {
-  // Sembunyikan halaman login dan tampilkan halaman pegawai
   document.getElementById('pageLogin').classList.add('hidden');
   document.getElementById('pagePegawai').classList.remove('hidden');
   
-  // Set informasi header & akun profil
   document.getElementById('headerNama').innerText = user.nama;
   document.getElementById('headerInfo').innerText = 'NIP: ' + user.nip + ' | Shift: ' + user.shift;
   
@@ -102,16 +100,13 @@ async function initAppWithUser(user) {
   var defaultShift = getFrontendShiftHours(user.shift);
   document.getElementById('jadwalMasuk').innerText = defaultShift.jamMasuk;
   document.getElementById('jadwalPulang').innerText = defaultShift.jamPulang;
-  
+
   initPeriodeLabel();
   checkAndApplyWeekendButtonState();
 
-  // Ambil konfigurasi kantor & shift dari backend GAS
   const dataConfig = await callGAS('getAppData', { shift: user.shift });
   if (dataConfig && dataConfig.config) {
     appConfig = dataConfig;
-    
-    // Tampilkan jam masuk & pulang dinamis sesuai shift pegawai dari backend
     if (dataConfig.shiftInfo) {
       document.getElementById('jadwalMasuk').innerText = dataConfig.shiftInfo.jamMasuk;
       document.getElementById('jadwalPulang').innerText = dataConfig.shiftInfo.jamPulang;
@@ -130,7 +125,7 @@ function cekBatasWaktuPresensi() {
   if (shiftCode.indexOf('S02') !== -1 || shiftCode.indexOf('SIANG') !== -1) {
     jamMasukStr = "14:00:00";
   } else if (shiftCode.indexOf('S03') !== -1 || shiftCode.indexOf('MALAM') !== -1) {
-    jamMasukStr = "20:00:00";
+    jamMasukStr = "21:00:00";
   } else if (shiftCode.indexOf('S01') !== -1 || shiftCode.indexOf('PAGI') !== -1) {
     jamMasukStr = "06:00:00";
   } else {
@@ -182,7 +177,6 @@ function handleFingerClick() {
   }
 }
 
-// ==================== LOGBOOK & MODALS ====================
 function openModalUpload(bulanNama, tahun) {
   selectedUploadMonth = { bulanNama: bulanNama, tahun: tahun };
   document.getElementById('uploadModalTitle').innerText = 'Upload Logbook ' + bulanNama + ' ' + tahun;
@@ -398,7 +392,6 @@ async function loadData() {
 
   renderFilteredRekap();
 
-  // Render Logbook Bulanan
   var currentMonthIdx = now.getMonth();
   var currentYear = now.getFullYear();
   var htmlLogbook = '';
@@ -453,26 +446,13 @@ function switchTab(tab) {
     if (nav && t !== 'presensi') nav.className = "flex flex-col items-center justify-center text-slate-400";
   });
 
-  // Tampilkan tab yang dipilih
-  var targetTab = document.getElementById('tab-' + tab);
-  if (targetTab) {
-    targetTab.classList.remove('hidden');
-  }
-
+  document.getElementById('tab-' + tab).classList.remove('hidden');
   var activeNav = document.getElementById('nav-' + tab);
-  if (activeNav && tab !== 'presensi') {
-    activeNav.className = "flex flex-col items-center justify-center text-blue-700";
-  }
+  if (activeNav && tab !== 'presensi') activeNav.className = "flex flex-col items-center justify-center text-blue-700";
 
-  // Khusus tab presensi: Inisialisasi peta atau perbarui ukurannya
   if (tab === 'presensi') {
     setTimeout(function() {
-      if (!map) {
-        initMap(); // Panggil inisialisasi peta jika belum pernah dibuat
-      } else {
-        map.invalidateSize(); // Paksa Leaflet menyesuaikan ukuran kontainer baru
-        updateMap();          // Perbarui posisi marker jika koordinat GPS sudah ada
-      }
-    }, 250); // Beri jeda 250ms agar DOM selesai dirender oleh browser
+      initMap();
+    }, 300);
   }
 }
