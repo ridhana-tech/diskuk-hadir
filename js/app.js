@@ -155,8 +155,20 @@ async function initAppWithUser(user) {
   document.getElementById('pageLogin').classList.add('hidden');
   document.getElementById('pagePegawai').classList.remove('hidden');
   
-  document.getElementById('headerNama').innerText = user.nama;
-  document.getElementById('headerInfo').innerText = 'NIP: ' + user.nip + ' | Shift: ' + user.shift;
+  document.getElementById('headerNama').innerText = user.nama || '-';
+  document.getElementById('headerJabatan').innerText = user.jabatan || '-';
+  document.getElementById('headerInfo').innerText =
+    'NIP: ' + (user.nip || '-') + ' | Shift: ' + (user.shift || '-');
+
+  const tanggalEl = document.getElementById('berandaTanggal');
+  if (tanggalEl) {
+    tanggalEl.textContent = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date());
+  }
   
   document.getElementById('accNama').innerText = user.nama;
   document.getElementById('accJabatan').innerText = user.jabatan;
@@ -250,6 +262,14 @@ function handleFingerClick() {
   }
 }
 
+// ==================== PANEL FILTER LOGBOOK & RENDER ====================
+function toggleLogbookFilter() {
+  var panel = document.getElementById('logbookFilterPanel');
+  if (panel) {
+    panel.classList.toggle('hidden');
+  }
+}
+
 function openModalUpload(bulanNama, tahun) {
   selectedUploadMonth = { bulanNama: bulanNama, tahun: tahun };
   document.getElementById('uploadModalTitle').innerText = 'Upload Logbook ' + bulanNama + ' ' + tahun;
@@ -307,25 +327,253 @@ function closeModalFilterBulanTahun() {
   document.getElementById('modalFilterBulanTahun').classList.add('hidden');
 }
 
-function setQuickFilter(type) {
-  currentFilterType = type;
 
-  var btnBulan = document.getElementById('btnFilterBulan');
-  var btnMingguIni = document.getElementById('btnFilterMingguIni');
-  var btnMingguLalu = document.getElementById('btnFilterMingguLalu');
-  var btnIcon = document.getElementById('btnFilterIcon');
+/* ==========================================
+   REKAP PRESENSI PEGAWAI
+   Terhubung ke data getRekapData dari API
+========================================== */
 
-  btnBulan.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnMingguIni.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnMingguLalu.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnIcon.className = "w-9 h-9 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition shrink-0";
+function ubahPeriodeRekap(periode) {
+  var mapping = {
+    'minggu-lalu': '1minggu_lalu',
+    'minggu-ini': '1minggu_ini',
+    'bulan-ini': '1bulan'
+  };
 
-  if (type === '1bulan') btnBulan.className = "flex-1 py-2 rounded-xl bg-white text-blue-700 font-bold shadow-sm transition";
-  if (type === '1minggu_ini') btnMingguIni.className = "flex-1 py-2 rounded-xl bg-white text-blue-700 font-bold shadow-sm transition";
-  if (type === '1minggu_lalu') btnMingguLalu.className = "flex-1 py-2 rounded-xl bg-white text-blue-700 font-bold shadow-sm transition";
+  currentFilterType = mapping[periode] || '1bulan';
+
+  document.querySelectorAll('.rekap-filter').forEach(function(btn) {
+    var aktif = btn.dataset.rekapPeriode === periode;
+
+    btn.className = aktif
+      ? 'rekap-filter px-2 py-3 rounded-xl border border-[#1D4ED8] bg-blue-50 text-[#1D4ED8] text-[10px] font-bold'
+      : 'rekap-filter px-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 text-[10px] font-semibold';
+  });
 
   renderFilteredRekap();
 }
+
+function formatTanggalRekap(tanggal) {
+  var parts = String(tanggal).slice(0, 10).split('-');
+
+  if (parts.length !== 3) return tanggal;
+
+  // Hindari pergeseran tanggal akibat parsing UTC.
+  var date = new Date(
+    Number(parts[0]),
+    Number(parts[1]) - 1,
+    Number(parts[2])
+  );
+
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+}
+
+function getTanggalRekap(row) {
+  var parts = String(row.tanggal || '').slice(0, 10).split('-');
+
+  if (parts.length !== 3) return null;
+
+  var date = new Date(
+    Number(parts[0]),
+    Number(parts[1]) - 1,
+    Number(parts[2])
+  );
+
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function renderFilteredRekap() {
+  var daftar = document.getElementById('rekapDaftarPresensi');
+  if (!daftar) return;
+
+  var now = new Date();
+  var today = new Date(
+    now.getFullYear(), now.getMonth(), now.getDate()
+  );
+
+  var startDate;
+  var endDate = new Date(today);
+
+  if (currentFilterType === '1minggu_ini') {
+    startDate = new Date(today);
+    var day = startDate.getDay();
+    startDate.setDate(
+      startDate.getDate() - (day === 0 ? 6 : day - 1)
+    );
+  } else if (currentFilterType === '1minggu_lalu') {
+    startDate = new Date(today);
+    var dayLalu = startDate.getDay();
+    startDate.setDate(
+      startDate.getDate() - (dayLalu === 0 ? 6 : dayLalu - 1) - 7
+    );
+    endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+  } else {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  endDate.setHours(23, 59, 59, 999);
+
+  var logs = (rawLogsData || []).filter(function(row) {
+    var date = getTanggalRekap(row);
+    return date && date >= startDate && date <= endDate;
+  });
+
+  // Urutkan tanggal terbaru ke terlama.
+  logs.sort(function(a, b) {
+    return String(b.tanggal).localeCompare(String(a.tanggal));
+  });
+
+  // Hitung ringkasan dari hasil API pada periode terpilih.
+  var hadir = 0;
+  var terlambat = 0;
+  var izin = 0;
+
+  logs.forEach(function(row) {
+    var status = String(row.statusKode || '').toUpperCase();
+    var ket = String(row.ketPresensi || '').toUpperCase();
+
+    if (status === 'H' || status === 'H(T)' ||
+        status === 'H(PC)' || status === 'H(TAP)') {
+      hadir++;
+    }
+
+    if (status === 'H(T)') terlambat++;
+
+    if (status.indexOf('IZIN') !== -1 ||
+        status.indexOf('SAKIT') !== -1 ||
+        ket.indexOf('IZIN') !== -1 ||
+        ket.indexOf('SAKIT') !== -1) {
+      izin++;
+    }
+  });
+
+  var elHadir = document.getElementById('rekapStatHadir');
+  var elTerlambat = document.getElementById('rekapStatTerlambat');
+  var elIzin = document.getElementById('rekapStatIzin');
+
+  if (elHadir) elHadir.textContent = hadir + ' hari';
+  if (elTerlambat) elTerlambat.textContent = terlambat + ' hari';
+  if (elIzin) elIzin.textContent = izin + ' hari';
+
+  // Perbarui informasi periode.
+  var label = document.getElementById('rekapLabelPeriode');
+  var rentang = document.getElementById('rekapRentangTanggal');
+  var tahun = document.getElementById('rekapTahun');
+  var subjudul = document.getElementById('rekapSubjudul');
+
+  var bulan = namaBulanIndo[now.getMonth()];
+  var tahunIni = now.getFullYear();
+
+  if (currentFilterType === '1minggu_lalu') {
+    if (label) label.textContent = '1 Minggu Lalu';
+    if (rentang) {
+      rentang.textContent =
+        String(startDate.getDate()).padStart(2, '0') + ' - ' +
+        String(endDate.getDate()).padStart(2, '0') + ' ' +
+        namaBulanIndo[endDate.getMonth()] + ' ' +
+        endDate.getFullYear();
+    }
+  } else if (currentFilterType === '1minggu_ini') {
+    if (label) label.textContent = '1 Minggu';
+    if (rentang) {
+      rentang.textContent =
+        String(startDate.getDate()).padStart(2, '0') + ' - ' +
+        String(today.getDate()).padStart(2, '0') + ' ' +
+        bulan + ' ' + tahunIni;
+    }
+  } else {
+    if (label) label.textContent = '1 Bulan';
+    if (rentang) {
+      var lastDay = new Date(tahunIni, now.getMonth() + 1, 0).getDate();
+      rentang.textContent =
+        '01 - ' + String(lastDay).padStart(2, '0') + ' ' +
+        bulan + ' ' + tahunIni;
+    }
+  }
+
+  if (tahun) tahun.textContent = 'Tahun ' + tahunIni;
+  if (subjudul) {
+    subjudul.textContent =
+      currentFilterType === '1bulan'
+        ? bulan + ' ' + tahunIni
+        : label.textContent;
+  }
+
+  // Render daftar kartu.
+  if (logs.length === 0) {
+    daftar.innerHTML =
+      '<div class="bg-white border border-slate-200 rounded-2xl p-6 text-center">' +
+        '<i class="fa-regular fa-calendar-xmark text-2xl text-slate-300"></i>' +
+        '<p class="text-xs font-semibold text-slate-600 mt-2">' +
+          'Belum ada catatan presensi pada periode ini.' +
+        '</p>' +
+      '</div>';
+    return;
+  }
+
+  daftar.innerHTML = logs.map(function(row) {
+    var status = String(row.statusKode || '-');
+    var statusText = String(row.statusText || status);
+    var badge = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+
+    if (status === 'H(T)') {
+      badge = 'bg-amber-50 text-amber-700 border-amber-100';
+    } else if (status === 'H(PC)') {
+      badge = 'bg-purple-50 text-purple-700 border-purple-100';
+    } else if (status === 'LIBUR') {
+      badge = 'bg-slate-100 text-slate-600 border-slate-200';
+    } else if (status === '-' || status === 'TAP') {
+      badge = 'bg-red-50 text-red-700 border-red-100';
+    }
+
+    return `
+      <article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <h4 class="text-xs font-bold text-slate-800">
+              ${formatTanggalRekap(row.tanggal)}
+            </h4>
+            <p class="text-[10px] text-slate-500 mt-1">
+              ${statusText}
+            </p>
+          </div>
+          <span title="${statusText}"
+            class="shrink-0 border ${badge} px-2.5 py-1 rounded-full text-[10px] font-bold">
+            ${status}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-100">
+          <div>
+            <p class="text-[10px] text-slate-500">
+              <i class="fa-solid fa-right-to-bracket text-green-600 mr-1"></i>
+              Jam Masuk
+            </p>
+            <p class="text-sm font-bold text-green-700 mt-1">
+              ${row.jamMasuk || '--:--:--'}
+            </p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500">
+              <i class="fa-solid fa-right-from-bracket text-red-600 mr-1"></i>
+              Jam Pulang
+            </p>
+            <p class="text-sm font-bold text-red-700 mt-1">
+              ${row.jamPulang || '--:--:--'}
+            </p>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 
 function applyCustomMonthYearFilter() {
   currentFilterType = 'custom';
@@ -344,78 +592,17 @@ function applyCustomMonthYearFilter() {
   renderFilteredRekap();
 }
 
-function renderFilteredRekap() {
-  if (!rawLogsData || rawLogsData.length === 0) {
-    document.getElementById('rekapPegawaiHarian').innerHTML = '<p class="text-xs text-center text-slate-400 py-4">Belum ada catatan presensi.</p>';
-    return;
-  }
-
-  var now = new Date();
-  var selectedBulan = parseInt(document.getElementById('filterBulan').value, 10);
-  var selectedTahun = parseInt(document.getElementById('filterTahun').value, 10);
-
-  var filtered = rawLogsData.filter(function(row) {
-    var rowDate = new Date(row.tanggal);
-
-    if (currentFilterType === '1bulan') {
-      return rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear();
-    } else if (currentFilterType === '1minggu_ini') {
-      var day = now.getDay();
-      var diffToMon = now.getDate() - day + (day === 0 ? -6 : 1);
-      var monday = new Date(now.setDate(diffToMon));
-      monday.setHours(0,0,0,0);
-      return rowDate >= monday;
-    } else if (currentFilterType === '1minggu_lalu') {
-      var dayLalu = now.getDay();
-      var diffToMonLalu = now.getDate() - dayLalu + (dayLalu === 0 ? -6 : 1) - 7;
-      var monLalu = new Date(now.setDate(diffToMonLalu));
-      monLalu.setHours(0,0,0,0);
-      var sunLalu = new Date(monLalu);
-      sunLalu.setDate(sunLalu.getDate() + 6);
-      sunLalu.setHours(23,59,59,999);
-      return rowDate >= monLalu && rowDate <= sunLalu;
-    } else if (currentFilterType === 'custom') {
-      return rowDate.getMonth() === selectedBulan && rowDate.getFullYear() === selectedTahun;
-    }
-    return true;
-  });
-
-  var htmlHarian = '';
-  filtered.forEach(function(row) {
-    var isLiburRow = (row.statusKode === 'LIBUR');
-    var badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    if (row.statusKode === 'H(T)') badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
-    if (row.statusKode === 'H(PC)') badgeColor = 'bg-purple-100 text-purple-800 border-purple-200';
-    if (row.statusKode === 'H(TAP)') badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
-    if (isLiburRow) badgeColor = 'bg-red-100 text-red-800 border-red-200';
-
-    var textClass = isLiburRow ? 'text-red-600 font-extrabold' : 'text-slate-700 font-bold';
-
-    htmlHarian += '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">' +
-      '<div class="flex justify-between items-center border-b border-slate-100 pb-2">' +
-        '<span class="font-bold text-slate-800 text-xs">' + (row.tanggalPretty || row.tanggal) + '</span>' +
-        '<span class="' + badgeColor + ' border text-[10px] font-extrabold px-2.5 py-0.5 rounded-full" title="' + row.statusText + '">' + row.statusKode + '</span>' +
-      '</div>' +
-      '<div class="grid grid-cols-2 gap-2 text-xs py-1">' +
-        '<div><span class="text-slate-400 block text-[10px]">Jam Masuk</span><span class="' + textClass + '">' + row.jamMasuk + '</span></div>' +
-        '<div class="text-right"><span class="text-slate-400 block text-[10px]">Jam Pulang</span><span class="' + textClass + '">' + row.jamPulang + '</span></div>' +
-      '</div>' +
-      '<div class="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-100">' +
-        '<span><i class="fa-solid fa-location-dot text-red-500 mr-1"></i>' + row.keterangan + ' (' + row.jarak + ')</span>' +
-      '</div>' +
-    '</div>';
-  });
-
-  document.getElementById('rekapPegawaiHarian').innerHTML = htmlHarian || '<p class="text-xs text-center text-slate-400 py-4">Tidak ada data presensi pada periode ini.</p>';
-}
-
 async function loadData() {
   if (!currentUser) return;
 
   const res = await callGAS('getRekapData', { user: currentUser });
-  if (!res) return;
+  if (!res || !res.success) {
+    console.error('Gagal memuat rekap:', res && res.message);
+    return;
+  }
 
   rawLogsData = res.logs || [];
+  renderFilteredRekap();
   var uploadedLogbookList = res.logbook || [];
 
   var countHadir = 0, countTerlambat = 0, countIzin = 0;
@@ -465,47 +652,57 @@ async function loadData() {
 
   renderFilteredRekap();
 
+  // RENDER LOGBOOK: 12 Bulan penuh dengan filter tahun
+  var selectedTahun = document.getElementById('filterTahunLogbook') ? document.getElementById('filterTahunLogbook').value : now.getFullYear().toString();
   var currentMonthIdx = now.getMonth();
-  var currentYear = now.getFullYear();
+  var currentYearNum = now.getFullYear();
   var htmlLogbook = '';
 
-  for (var m = currentMonthIdx; m >= 0; m--) {
-    var bulanName = namaBulanIndo[m];
-    var isCurrentMonth = (m === currentMonthIdx);
+  namaBulanIndo.forEach(function(bulanName, m) {
+    var isCurrentMonth = (m === currentMonthIdx && parseInt(selectedTahun) === currentYearNum);
+    var isPastMonth = (parseInt(selectedTahun) < currentYearNum) || (parseInt(selectedTahun) === currentYearNum && m < currentMonthIdx);
 
     var existingFile = uploadedLogbookList.find(function(item) {
-      return item.bulan === bulanName && item.tahun.toString() === currentYear.toString();
+      return item.bulan && item.bulan.toLowerCase() === bulanName.toLowerCase() && 
+             item.tahun.toString() === selectedTahun.toString();
     });
+
+    var hasFile = existingFile && existingFile.fileUrl && existingFile.fileUrl !== '#';
 
     htmlLogbook += '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">' +
       '<div>' +
-        '<p class="font-bold text-slate-800 text-xs">Logbook ' + bulanName + ' ' + currentYear + '</p>' +
-        '<p class="text-[10px] text-slate-400">' + (isCurrentMonth ? 'Bulan Berjalan' : 'Bulan Lalu') + '</p>' +
+        '<p class="font-bold text-slate-800 text-xs">Logbook ' + bulanName + ' ' + selectedTahun + '</p>' +
+        '<p class="text-[10px] text-slate-400">' + 
+          (isCurrentMonth ? 'Bulan Berjalan (Aktif)' : (hasFile ? 'Sudah Diunggah' : (isPastMonth ? 'Bulan Terlewat' : 'Mendatang'))) + 
+        '</p>' +
       '</div>';
 
-    if (existingFile && existingFile.fileUrl) {
-      htmlLogbook += '<div class="flex items-center gap-1.5">' +
-        '<a href="' + existingFile.fileUrl + '" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-bold text-xs border border-blue-200 flex items-center gap-1">' +
-          '<i class="fa-solid fa-file-pdf"></i> Lihat' +
-        '</a>';
+    htmlLogbook += '<div class="flex items-center gap-1.5">';
+    
+    if (hasFile) {
+      htmlLogbook += '<a href="' + existingFile.fileUrl + '" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-bold text-xs border border-blue-200 flex items-center gap-1">' +
+        '<i class="fa-solid fa-file-pdf"></i> Lihat' +
+      '</a>';
+      
       if (isCurrentMonth) {
-        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + currentYear + ')" class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-xl font-bold text-xs border border-amber-200">' +
+        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + selectedTahun + ')" class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-xl font-bold text-xs border border-amber-200" title="Ganti File">' +
           '<i class="fa-solid fa-pen-to-square"></i>' +
         '</button>';
       }
-      htmlLogbook += '</div>';
     } else {
       if (isCurrentMonth) {
-        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + currentYear + ')" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1">' +
+        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + selectedTahun + ')" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1">' +
           '<i class="fa-solid fa-cloud-arrow-up"></i> Upload' +
         '</button>';
+      } else if (isPastMonth) {
+        htmlLogbook += '<span class="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">Tidak Diunggah</span>';
       } else {
-        htmlLogbook += '<span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">Tidak Diunggah</span>';
+        htmlLogbook += '<span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">Belum Waktunya</span>';
       }
     }
 
-    htmlLogbook += '</div>';
-  }
+    htmlLogbook += '</div></div>';
+  });
 
   document.getElementById('logbookList').innerHTML = htmlLogbook;
 }
