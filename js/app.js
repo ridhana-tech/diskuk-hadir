@@ -446,13 +446,29 @@ function switchTab(tab) {
     if (nav && t !== 'presensi') nav.className = "flex flex-col items-center justify-center text-slate-400";
   });
 
-  document.getElementById('tab-' + tab).classList.remove('hidden');
-  var activeNav = document.getElementById('nav-' + tab);
-  if (activeNav && tab !== 'presensi') activeNav.className = "flex flex-col items-center justify-center text-blue-700";
+  // Tampilkan tab target
+  var targetTab = document.getElementById('tab-' + tab);
+  if (targetTab) {
+    targetTab.classList.remove('hidden');
+  }
 
+  var activeNav = document.getElementById('nav-' + tab);
+  if (activeNav && tab !== 'presensi') {
+    activeNav.className = "flex flex-col items-center justify-center text-blue-700";
+  }
+
+  // Khusus tab presensi: Berikan jeda agar DOM selesai dirender, lalu muat/perbarui peta
   if (tab === 'presensi') {
     setTimeout(function() {
-      initMap();
+      if (typeof initMap === 'function') {
+        initMap();
+      }
+      if (typeof map !== 'undefined' && map !== null) {
+        map.invalidateSize(); // Paksa Leaflet menyesuaikan ukuran peta dengan kontainer layar
+        if (typeof currentLat !== 'undefined' && typeof currentLng !== 'undefined' && currentLat && currentLng) {
+          map.setView([currentLat, currentLng], 17);
+        }
+      }
     }, 300);
   }
 }
