@@ -40,19 +40,25 @@ function startGpsTracking() {
 }
 
 function checkRadius() {
-  if (!appConfig || !currentLat || !currentLng) return;
+  if (!currentLat || !currentLng) return;
+  
+  // Gunakan nilai default kantor jika appConfig belum siap
+  var latKantorDefault = (appConfig && appConfig.config) ? appConfig.config.latKantor : -7.59828;
+  var longKantorDefault = (appConfig && appConfig.config) ? appConfig.config.longKantor : 110.95183;
+  var radiusMaks = (appConfig && appConfig.config) ? appConfig.config.radiusMeter : 100;
+
   var R = 6371000;
-  var dLat = (currentLat - appConfig.config.latKantor) * Math.PI / 180;
-  var dLon = (currentLng - appConfig.config.longKantor) * Math.PI / 180;
+  var dLat = (currentLat - latKantorDefault) * Math.PI / 180;
+  var dLon = (currentLng - longKantorDefault) * Math.PI / 180;
   var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(appConfig.config.latKantor * Math.PI / 180) * Math.cos(currentLat * Math.PI / 180) *
+            Math.cos(latKantorDefault * Math.PI / 180) * Math.cos(currentLat * Math.PI / 180) *
             Math.sin(dLon/2) * Math.sin(dLon/2);
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   var dist = R * c;
 
   var badge = document.getElementById('radiusBadge');
-  var radiusMaks = (appConfig.config.radiusMeter) ? appConfig.config.radiusMeter : 100;
-  
+  if (!badge) return;
+
   if (dist <= radiusMaks) {
     badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
     badge.innerText = "Kantor Diskuktransesdm";
