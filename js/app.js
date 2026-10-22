@@ -18,37 +18,27 @@ var namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Ju
 
 // ==================== INITIALIZATION ====================
 window.onload = function() {
-  var savedUser = localStorage.getItem('currentUser');
-  if (savedUser) {
-    try {
-      currentUser = JSON.parse(savedUser);
-      if (currentUser.role === 'ATASAN') {
-        window.location.href = 'atasan.html';
-        return;
-      } else if (currentUser.role === 'ADMIN') {
-        window.location.href = 'admin.html';
-        return;
-      }
-      document.getElementById('pageLogin').classList.add('hidden');
-      document.getElementById('pagePegawai').classList.remove('hidden');
-      initAppWithUser(currentUser);
-      return;
-    } catch (e) {
-      localStorage.removeItem('currentUser');
-    }
-  }
-  
-  // Jika belum login, pastikan halaman login yang tampil
-  document.getElementById('pageLogin').classList.remove('hidden');
-  document.getElementById('pagePegawai').classList.add('hidden');
-  startGpsTracking();
+  // Selalu tampilkan halaman login saat aplikasi pertama dibuka
+  currentUser = null;
+
+  var pageLogin = document.getElementById('pageLogin');
+  var pagePegawai = document.getElementById('pagePegawai');
+
+  if (pageLogin) pageLogin.classList.remove('hidden');
+  if (pagePegawai) pagePegawai.classList.add('hidden');
+
+  // Hentikan penggunaan sesi lama untuk auto-login
+  localStorage.removeItem('currentUser');
+
+  // GPS baru dimulai setelah pengguna berhasil login,
+  // jika memang dibutuhkan oleh aplikasi.
 };
 
 // Fungsi pembantu untuk menampilkan Halaman Login
 function showLoginPage() {
   var pageLogin = document.getElementById('pageLogin');
   var pagePegawai = document.getElementById('pagePegawai');
-  
+
   if (pageLogin) pageLogin.classList.remove('hidden');
   if (pagePegawai) pagePegawai.classList.add('hidden');
 }
@@ -830,6 +820,22 @@ function convertFileToBase64(file) {
     reader.onerror = error => reject(error);
     reader.readAsDataURL(file);
   });
+}
+
+function logout() {
+  // Hapus sesi pengguna
+  localStorage.removeItem('currentUser');
+  sessionStorage.removeItem('currentUser');
+
+  // Bersihkan data pengguna aktif
+  currentUser = null;
+
+  // Tampilkan kembali halaman login
+  showLoginPage();
+
+  // Bersihkan form login jika tersedia
+  var formLogin = document.getElementById('formLogin');
+  if (formLogin) formLogin.reset();
 }
 
 var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjpa3M38gw53jiMJNUslPkBJz3lt2eGCyCMDn83gOavl1T6zq380jJRA3Lg-Y_XY4Q-w/exec"; 
