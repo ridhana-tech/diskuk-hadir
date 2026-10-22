@@ -2,348 +2,206 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Aplikasi Presensi Online PJLP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Presensi PJLP</title>
   
-  <!-- Tailwind CSS & FontAwesome Icons -->
+  <!-- Tailwind CSS & FontAwesome & Leaflet CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Leaflet.js (OpenStreetMap) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Custom CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-safe">
+<body class="bg-slate-100 font-['Poppins'] text-slate-800 antialiased max-w-md mx-auto min-h-screen relative shadow-2xl flex flex-col justify-between">
 
-  <!-- ==================== PAGE LOGIN ==================== -->
-  <div id="pageLogin" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900">
-    <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-5">
-      <div class="text-center space-y-1">
-        <div class="w-16 h-16 bg-blue-100 text-blue-700 rounded-2xl mx-auto flex items-center justify-center text-3xl font-bold shadow-inner mb-3">
-          <i class="fa-solid fa-fingerprint"></i>
-        </div>
-        <h2 class="text-2xl font-bold text-slate-800">Presensi PJLP</h2>
-        <p class="text-xs text-slate-500">Masuk dengan NIPJLP & Password</p>
+  <!-- HEADER / PROFIL PEGAWAI -->
+  <header class="bg-blue-700 text-white p-4 rounded-b-3xl shadow-md sticky top-0 z-40">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 id="headerNama" class="text-sm font-extrabold tracking-wide"> Memuat Nama...</h1>
+        <p id="headerSub" class="text-[11px] text-blue-100 mt-0.5">NIP: - | Shift: -</p>
       </div>
-
-      <form onsubmit="event.preventDefault(); login();" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">NIPJLP</label>
-          <input type="text" id="loginNip" class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder="Masukkan NIPJLP" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
-          <input type="password" id="loginPassword" class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder="Masukkan Password" required>
-        </div>
-        <button type="submit" id="btnLogin" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-sm shadow-lg shadow-blue-700/30 transition active:scale-95">
-          Masuk Akun
-        </button>
-      </form>
+      <span class="bg-blue-600/60 border border-blue-400/30 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">PJLP</span>
     </div>
-  </div>
+  </header>
 
+  <!-- KONTEN UTAMA (TAB & HALAMAN) -->
+  <main class="flex-1 overflow-y-auto pb-24">
 
-  <!-- ==================== MAIN PAGE PEGAWAI ==================== -->
-  <div id="pagePegawai" class="hidden">
-    
-    <header class="bg-blue-700 text-white p-4 sticky top-0 z-40 shadow-md">
-      <div class="max-w-md mx-auto flex justify-between items-center">
-        <div>
-          <h1 class="font-bold text-base leading-tight" id="headerNama">-</h1>
-          <p class="text-xs text-blue-200" id="headerInfo">NIP: - | Shift: -</p>
-        </div>
-        <span class="bg-blue-800 text-blue-100 text-[10px] px-2.5 py-1 rounded-full font-medium border border-blue-600">PJLP</span>
-      </div>
-    </header>
-
-    <main class="max-w-md mx-auto p-4 space-y-4">
+    <!-- TAB 1: BERANDA -->
+    <section id="tab-beranda" class="space-y-4 px-4 pt-4">
       
-      <!-- TAB 1: BERANDA -->
-      <section id="tab-beranda" class="space-y-4">
-        <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-5 rounded-3xl shadow-lg space-y-3 relative overflow-hidden">
-          <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl pointer-events-none">
-            <i class="fa-solid fa-map-location-dot"></i>
+      <!-- Informasi Lokasi -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-400">LOKASI ANDA SAAT INI</span>
+          <span id="radiusBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Memuat...</span>
+        </div>
+        <p id="berandaKoordinat" class="text-xs text-slate-700 font-medium">Mendeteksi koordinat...</p>
+        <p id="berandaLokasi" class="text-xs text-slate-500">Mencari nama lokasi...</p>
+      </div>
+
+      <!-- TOMBOL PINTAS PENGAJUAN IZIN -->
+      <div class="bg-gradient-to-r from-blue-700 to-indigo-700 p-4 rounded-2xl shadow-md text-white flex justify-between items-center">
+        <div class="space-y-0.5">
+          <h4 class="font-bold text-xs">Berhalangan Hadir?</h4>
+          <p class="text-[10px] text-blue-100">Ajukan Izin Sakit atau Kepentingan Keluarga</p>
+        </div>
+        <button onclick="openPageIzin()" class="bg-white text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 shrink-0">
+          <i class="fa-solid fa-file-pen"></i> Ajukan Izin
+        </button>
+      </div>
+
+      <!-- Jadwal Presensi Hari Ini -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <h3 class="text-xs font-bold text-slate-400">JADWAL PRESENSI HARI INI</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <span class="text-[10px] text-slate-400 block">Jadwal Masuk</span>
+            <span id="jadwalMasuk" class="text-lg font-extrabold text-slate-800">07:30:00</span>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-sm">
-              <i class="fa-solid fa-location-dot text-amber-300"></i>
-            </span>
-            <span class="text-xs font-bold uppercase tracking-wider text-blue-100">Lokasi Anda Saat Ini</span>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-right">
+            <span class="text-[10px] text-slate-400 block">Jadwal Pulang</span>
+            <span id="jadwalPulang" class="text-lg font-extrabold text-slate-800">16:00:00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: REKAP -->
+    <section id="tab-rekap" class="hidden space-y-4 px-4 pt-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Rekap Kehadiran Bulan Ini</h3>
+        <div id="rekapContainer" class="text-xs text-slate-600">Memuat data rekap...</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PRESENSI (PETA & TOMBOL SUBMIT) -->
+    <section id="tab-presensi" class="hidden space-y-4 px-4 pt-4">
+      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <div id="map"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Lokasi Anda</span>
+          <span id="radiusBadgePresensi" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Mengecek Radius...</span>
+        </div>
+        <p class="text-xs text-slate-600 font-medium" id="presensiTitikLokasi"><i class="fa-solid fa-location-dot text-blue-600 mr-1"></i> Lat: - | Long: -</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <button type="button" onclick="openModalKamera()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
+          <i class="fa-solid fa-camera"></i> Buka Kamera & Submit Presensi
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 4: LOGBOOK -->
+    <section id="tab-logbook" class="hidden space-y-4 px-4 pt-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Logbook Harian / Bulanan</h3>
+        <p class="text-xs text-slate-500">Fitur unggah logbook dan aktivitas pegawai.</p>
+      </div>
+    </section>
+
+    <!-- TAB 5: AKUN -->
+    <section id="tab-akun" class="hidden space-y-4 px-4 pt-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Informasi Akun</h3>
+        <p id="akunDetail" class="text-xs text-slate-600">Memuat informasi pegawai...</p>
+      </div>
+    </section>
+
+    <!-- HALAMAN KHUSUS: FORM PENGAJUAN IZIN (FULL PAGE) -->
+    <section id="tab-form-izin" class="hidden space-y-4 px-4 pt-4">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-3">
+          <button onclick="switchTab('beranda')" type="button" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <div>
+            <h2 class="text-base font-bold text-slate-800">Form Pengajuan Izin</h2>
+            <p class="text-[11px] text-slate-400">Lengkapi formulir ketidakhadiran Anda</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Izin <span class="text-red-500">*</span></label>
+          <select id="izinJenisPage" onchange="handleJenisIzinPageChange()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium">
+            <option value="">-- Pilih Jenis Izin --</option>
+            <option value="Sakit">Sakit</option>
+            <option value="Kepentingan Keluarga">Kepentingan Keluarga</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Mulai <span class="text-red-500">*</span></label>
+            <input type="date" id="izinTglMulaiPage" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
           </div>
           <div>
-            <h4 class="text-base font-bold leading-snug drop-shadow-sm" id="berandaLokasi">Mendapatkan lokasi GPS...</h4>
-            <p class="text-xs text-blue-200 mt-1" id="berandaKoordinat">Lat: - | Long: -</p>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Selesai <span class="text-red-500">*</span></label>
+            <input type="date" id="izinTglSelesaiPage" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
           </div>
-        </div>
-
-        <div class="space-y-2">
-          <div class="text-center space-y-0.5">
-            <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Rekap Presensi</h3>
-            <p class="text-[11px] font-medium text-slate-500" id="periodeRekap">01 Oktober - Sekarang</p>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2 pt-1">
-            <div class="bg-emerald-100/80 border border-emerald-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
-              <span class="text-[10px] font-bold text-emerald-800 uppercase block">Hadir</span>
-              <p class="text-xl font-extrabold text-slate-800" id="statHadir">0 hari</p>
-            </div>
-            <div class="bg-amber-100/80 border border-amber-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
-              <span class="text-[10px] font-bold text-amber-800 uppercase block">Terlambat</span>
-              <p class="text-xl font-extrabold text-slate-800" id="statTerlambat">0 hari</p>
-            </div>
-            <div class="bg-blue-100/80 border border-blue-200/60 rounded-2xl p-3 text-center shadow-sm space-y-1">
-              <span class="text-[10px] font-bold text-blue-800 uppercase block">Izin</span>
-              <p class="text-xl font-extrabold text-slate-800" id="statIzin">0 hari</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <h3 class="font-bold text-slate-700 text-xs uppercase tracking-wider text-center">Hasil Presensi Hari Ini</h3>
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div class="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl space-y-1">
-              <span class="text-[10px] font-bold text-emerald-700 uppercase block"><i class="fa-solid fa-right-to-bracket me-1"></i> Jam Masuk</span>
-              <p class="text-lg font-extrabold text-emerald-900" id="todayJamMasuk">--:--:--</p>
-            </div>
-            <div class="bg-amber-50 border border-amber-100 p-3.5 rounded-xl space-y-1">
-              <span class="text-[10px] font-bold text-amber-700 uppercase block"><i class="fa-solid fa-right-from-bracket me-1"></i> Jam Pulang</span>
-              <p class="text-lg font-extrabold text-amber-900" id="todayJamPulang">--:--:--</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 2: REKAP PRESENSI HARIAN PEGAWAI -->
-      <section id="tab-rekap" class="hidden space-y-3">
-        <h2 class="font-bold text-slate-800 text-sm">Riwayat Presensi Saya</h2>
-
-        <div class="bg-slate-100 p-1.5 rounded-2xl flex items-center justify-between gap-1 text-[11px] font-medium">
-          <button type="button" id="btnFilterMingguLalu" onclick="setQuickFilter('1minggu_lalu')" class="flex-1 py-2 rounded-xl text-slate-600 transition">Minggu Lalu</button>
-          <button type="button" id="btnFilterMingguIni" onclick="setQuickFilter('1minggu_ini')" class="flex-1 py-2 rounded-xl text-slate-600 transition">Minggu Ini</button>
-          <button type="button" id="btnFilterBulan" onclick="setQuickFilter('1bulan')" class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-bold shadow-sm transition">1 Bulan</button>
-
-          <button type="button" id="btnFilterIcon" onclick="openModalFilterBulanTahun()" class="w-9 h-9 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition shrink-0" title="Filter Bulan & Tahun">
-            <i class="fa-solid fa-sliders text-xs"></i>
-          </button>
-        </div>
-
-        <div class="space-y-3" id="rekapPegawaiHarian">
-          <p class="text-xs text-center text-slate-400 py-4">Memuat data rekap...</p>
-        </div>
-      </section>
-
-      <!-- TAB HALAMAN PRESENSI -->
-      <section id="tab-presensi" class="hidden space-y-4">
-        <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div id="map"></div>
-        </div>
-
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Lokasi Anda</span>
-            <span id="radiusBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Mengecek Radius...</span>
-          </div>
-          <p class="text-xs text-slate-600 font-medium" id="presensiTitikLokasi"><i class="fa-solid fa-location-dot text-blue-600 mr-1"></i> Lat: - | Long: -</p>
-        </div>
-
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Jadwal Presensi Hari Ini</h3>
-          <div class="grid grid-cols-2 gap-3 pt-1">
-            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <span class="text-[10px] text-slate-400 block font-semibold">Jadwal Masuk</span>
-              <span class="text-base font-bold text-slate-800" id="jadwalMasuk">07:30:00</span>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <span class="text-[10px] text-slate-400 block font-semibold">Jadwal Pulang</span>
-              <span class="text-base font-bold text-slate-800" id="jadwalPulang">16:00:00</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 3: LOGBOOK BULANAN -->
-      <section id="tab-logbook" class="hidden space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 class="font-bold text-slate-800 text-sm">Rekap Logbook Bulanan</h2>
-          <span class="text-[10px] bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full font-bold">PDF Max 2 MB</span>
-        </div>
-        <div class="space-y-2.5" id="logbookList">
-          <p class="text-xs text-center text-slate-400 py-4">Memuat logbook...</p>
-        </div>
-      </section>
-
-      <!-- TAB 4: AKUN PROFIL -->
-      <section id="tab-akun" class="hidden space-y-4">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-2">
-          <div class="w-16 h-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-2xl font-bold mx-auto border-2 border-blue-500">
-            <i class="fa-solid fa-user"></i>
-          </div>
-          <h3 class="font-bold text-slate-800 text-base" id="accNama">-</h3>
-          <p class="text-xs text-slate-500" id="accJabatan">-</p>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 text-xs">
-          <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">NIPJLP</span><span class="font-bold text-slate-700" id="accNip">-</span></div>
-          <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Nomor Telepon</span><span class="font-bold text-slate-700" id="accNoHp">-</span></div>
-          <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Tempat, Tanggal Lahir</span><span class="font-bold text-slate-700" id="accTtl">-</span></div>
-          <div class="p-3.5 flex justify-between items-center"><span class="text-slate-400 font-medium">Atasan Langsung</span><span class="font-bold text-slate-700" id="accAtasan">-</span></div>
-        </div>
-
-        <button type="button" onclick="logout()" class="w-full bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3 rounded-xl border border-red-200 transition text-xs flex items-center justify-center gap-2">
-          <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
-        </button>
-      </section>
-
-    </main>
-
-    <!-- NAVBAR BOTTOM -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
-      <div class="max-w-md mx-auto grid grid-cols-5 text-center h-16 relative">
-        <button type="button" onclick="switchTab('beranda')" id="nav-beranda" class="flex flex-col items-center justify-center text-blue-700">
-          <i class="fa-solid fa-house text-base"></i>
-          <span class="text-[9px] font-medium mt-1">Beranda</span>
-        </button>
-
-        <button type="button" onclick="switchTab('rekap')" id="nav-rekap" class="flex flex-col items-center justify-center text-slate-400">
-          <i class="fa-solid fa-clipboard-list text-base"></i>
-          <span class="text-[9px] font-medium mt-1">Rekap</span>
-        </button>
-
-        <div class="relative flex justify-center items-center col-span-1">
-          <button type="button" onclick="handleFingerClick()" id="nav-presensi" class="absolute -top-5 bg-blue-700 hover:bg-blue-800 text-white w-14 h-14 rounded-full shadow-lg border-4 border-slate-50 flex items-center justify-center text-2xl transition active:scale-90 z-50">
-            <i class="fa-solid fa-fingerprint"></i>
-          </button>
-        </div>
-
-        <button type="button" onclick="switchTab('logbook')" id="nav-logbook" class="flex flex-col items-center justify-center text-slate-400">
-          <i class="fa-solid fa-book-bookmark text-base"></i>
-          <span class="text-[9px] font-medium mt-1">Logbook</span>
-        </button>
-
-        <button type="button" onclick="switchTab('akun')" id="nav-akun" class="flex flex-col items-center justify-center text-slate-400">
-          <i class="fa-solid fa-circle-user text-base"></i>
-          <span class="text-[9px] font-medium mt-1">Akun</span>
-        </button>
-      </div>
-    </nav>
-
-  </div>
-
-
-  <!-- ==================== MODAL FILTER BULAN & TAHUN ==================== -->
-  <div id="modalFilterBulanTahun" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-center relative shadow-2xl">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-800 text-sm"><i class="fa-solid fa-filter text-blue-600 mr-1.5"></i>Filter Bulan & Tahun</h3>
-        <button type="button" onclick="closeModalFilterBulanTahun()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-
-      <div class="space-y-3 text-left">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Bulan</label>
-          <select id="filterBulan" class="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <option value="0">Januari</option>
-            <option value="1">Februari</option>
-            <option value="2">Maret</option>
-            <option value="3">April</option>
-            <option value="4">Mei</option>
-            <option value="5">Juni</option>
-            <option value="6">Juli</option>
-            <option value="7">Agustus</option>
-            <option value="8">September</option>
-            <option value="9">Oktober</option>
-            <option value="10">November</option>
-            <option value="11">Desember</option>
-          </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Tahun</label>
-          <select id="filterTahun" class="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-          </select>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Detail Alasan / Keterangan <span class="text-red-500">*</span></label>
+          <textarea id="izinAlasanPage" rows="4" placeholder="Tuliskan keterangan/alasan izin secara jelas..." class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none"></textarea>
         </div>
 
-        <button type="button" onclick="applyCustomMonthYearFilter()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-check"></i> Terapkan Filter
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ==================== MODAL UPLOAD LOGBOOK ==================== -->
-  <div id="modalUploadLogbook" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-center relative">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-800 text-sm" id="uploadModalTitle">Upload Logbook</h3>
-        <button type="button" onclick="closeModalUpload()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-
-      <div class="space-y-3 text-left">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih File PDF (Maks. 2 MB)</label>
-          <input type="file" id="fileLogbook" accept="application/pdf" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl p-1">
+        <div class="space-y-1 pt-1">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            Lampiran Dokumen/Surat <span id="labelWajibLampiranPage" class="text-red-500 hidden">* (Wajib Surat Dokter)</span>
+          </label>
+          <input type="file" id="izinLampiranPage" accept="image/*,application/pdf" class="w-full text-xs text-slate-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition border border-slate-200 rounded-xl p-1 bg-slate-50">
+          <p class="text-[10px] text-slate-400">Format: Foto (JPG/PNG) atau PDF (Maks. 2MB)</p>
         </div>
 
-        <button type="button" onclick="submitLogbookFile()" id="btnSubmitLogbook" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up"></i> Unggah File Logbook
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ==================== MODAL POPUP KAMERA LIVE STREAM ==================== -->
-  <div id="modalKamera" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 text-center relative shadow-2xl">
-      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-800 text-sm" id="modalTitle">Foto Presensi Selfie</h3>
-        <button type="button" onclick="closeModalKamera()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-      </div>
-
-      <div class="space-y-3">
-        <div class="relative w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden shadow-inner border-2 border-blue-600 flex items-center justify-center">
-          <video id="webcamVideo" autoplay playsinline class="w-full h-full object-cover"></video>
-          <img id="capturedImg" class="w-full h-full object-cover hidden">
-          <canvas id="webcamCanvas" class="hidden"></canvas>
-        </div>
-
-        <div id="kameraActionBtns" class="space-y-2">
-          <button type="button" onclick="takeSnapshot()" id="btnTakeSnapshot" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-camera"></i> Ambil Foto Selfie
-          </button>
-        </div>
-
-        <div id="confirmActionBtns" class="hidden space-y-2.5">
-          <div class="space-y-1 text-left">
-            <label class="block text-[11px] font-semibold text-slate-500">Keterangan / Catatan (Opsional)</label>
-            <input type="text" id="inputKetPresensi" placeholder="Contoh: Datang terlambat karena tugas luar..." class="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          </div>
-
-          <button type="button" onclick="retakePhoto()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1">
-            <i class="fa-solid fa-rotate-left mr-1"></i> Foto Ulang
-          </button>
-
-          <button type="button" onclick="confirmAndSend()" id="btnPresensiMasuk" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1">
-            <i class="fa-solid fa-paper-plane mr-1"></i> Kirim Presensi
+        <div class="pt-3">
+          <button onclick="submitPengajuanIzinPage()" id="btnSubmitIzinPage" type="button" class="w-full bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-700/30 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin
           </button>
         </div>
       </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAVIGATION (4 TAB UTAMA) -->
+  <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 h-16 flex justify-around items-center px-2">
+    <button onclick="switchTab('beranda')" id="nav-beranda" class="flex flex-col items-center justify-center text-blue-700 w-16">
+      <i class="fa-solid fa-house text-base"></i>
+      <span class="text-[10px] font-semibold mt-1">Beranda</span>
+    </button>
+    <button onclick="switchTab('rekap')" id="nav-rekap" class="flex flex-col items-center justify-center text-slate-400 w-16">
+      <i class="fa-solid fa-calendar-days text-base"></i>
+      <span class="text-[10px] font-semibold mt-1">Rekap</span>
+    </button>
+    
+    <!-- Tombol Tengah (Finger Presensi) -->
+    <div class="relative -top-3">
+      <button onclick="switchTab('presensi')" id="nav-presensi" class="w-14 h-14 bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-700/40 hover:bg-blue-800 transition">
+        <i class="fa-solid fa-fingerprint text-2xl"></i>
+      </button>
     </div>
-  </div>
 
+    <button onclick="switchTab('logbook')" id="nav-logbook" class="flex flex-col items-center justify-center text-slate-400 w-16">
+      <i class="fa-solid fa-book text-base"></i>
+      <span class="text-[10px] font-semibold mt-1">Logbook</span>
+    </button>
+    <button onclick="switchTab('akun')" id="nav-akun" class="flex flex-col items-center justify-center text-slate-400 w-16">
+      <i class="fa-solid fa-user text-base"></i>
+      <span class="text-[10px] font-semibold mt-1">Akun</span>
+    </button>
+  </nav>
 
-  <!-- ==================== SCRIPT LOADING (ORDER MATTERS) ==================== -->
-  <script src="api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/map-location.js"></script>
-  <script src="js/camera.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

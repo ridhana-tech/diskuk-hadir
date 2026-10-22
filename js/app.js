@@ -437,38 +437,121 @@ async function loadData() {
   document.getElementById('logbookList').innerHTML = htmlLogbook;
 }
 
+// ==================== NAVIGASI TAB & FORM IZIN ====================
 function switchTab(tab) {
   activeTab = tab;
-  ['beranda', 'rekap', 'presensi', 'logbook', 'akun'].forEach(function(t) {
+  var allTabs = ['beranda', 'rekap', 'presensi', 'logbook', 'akun', 'form-izin'];
+  
+  allTabs.forEach(function(t) {
     var el = document.getElementById('tab-' + t);
     if (el) el.classList.add('hidden');
-    var nav = document.getElementById('nav-' + t);
-    if (nav && t !== 'presensi') nav.className = "flex flex-col items-center justify-center text-slate-400";
   });
 
-  // Tampilkan tab target
   var targetTab = document.getElementById('tab-' + tab);
   if (targetTab) {
     targetTab.classList.remove('hidden');
   }
 
-  var activeNav = document.getElementById('nav-' + tab);
-  if (activeNav && tab !== 'presensi') {
-    activeNav.className = "flex flex-col items-center justify-center text-blue-700";
-  }
-
-  // Khusus tab presensi: Berikan jeda agar DOM selesai dirender, lalu muat/perbarui peta
+  // Khusus saat tab presensi dibuka (lewat tombol finger)
   if (tab === 'presensi') {
     setTimeout(function() {
       if (typeof initMap === 'function') {
         initMap();
       }
       if (typeof map !== 'undefined' && map !== null) {
-        map.invalidateSize(); // Paksa Leaflet menyesuaikan ukuran peta dengan kontainer layar
+        map.invalidateSize(); // Menyegarkan ukuran peta agar muncul normal
         if (typeof currentLat !== 'undefined' && typeof currentLng !== 'undefined' && currentLat && currentLng) {
           map.setView([currentLat, currentLng], 17);
         }
       }
-    }, 300);
+    }, 250);
   }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Navigasi & Logika Form Pengajuan Izin
+function openPageIzin() {
+  document.getElementById('izinJenisPage').value = '';
+  document.getElementById('izinTglMulaiPage').value = '';
+  document.getElementById('izinTglSelesaiPage').value = '';
+  document.getElementById('izinAlasanPage').value = '';
+  document.getElementById('izinLampiranPage').value = '';
+  handleJenisIzinPageChange();
+  switchTab('form-izin');
+}
+
+function handleJenisIzinPageChange() {
+  var jenis = document.getElementById('izinJenisPage').value;
+  var labelWajib = document.getElementById('labelWajibLampiranPage');
+  if (labelWajib) {
+    if (jenis === 'Sakit') {
+      labelWajib.classList.remove('hidden');
+    } else {
+      labelWajib.classList.add('hidden');
+    }
+  }
+}
+
+async function submitPengajuanIzinPage() {
+  var jenis = document.getElementById('izinJenisPage').value;
+  var tglMulai = document.getElementById('izinTglMulaiPage').value;
+  var tglSelesai = document.getElementById('izinTglSelesaiPage').value;
+  var alasan = document.getElementById('izinAlasanPage').value;
+  var fileInput = document.getElementById('izinLampiranPage');
+
+  if (!jenis || !tglMulai || !tglSelesai || !alasan) {
+    return alert('Harap lengkapi semua kolom yang wajib diisi!');
+  }
+
+  if (jenis === 'Sakit' && (!fileInput.files || fileInput.files.length === 0)) {
+    return alert('Untuk izin Sakit, Anda wajib mengunggah Surat Dokter!');
+  }
+
+  var btn = document.getElementById('btnSubmitIzinPage');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Pengajuan...';
+
+  var base64Data = null;
+  if (fileInput.files && fileInput.files.length > 0) {
+    var file = fileInput.files[0];
+    if (file.size > 2 * 1024 * 1024) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin';
+      return alert('Ukuran file terlalu besar! Maksimal 2 MB.');
+    }
+    base64Data = await convertFileToBase64(file);
+  }
+
+  var payload = {
+    nip: currentUser.nip,
+    nama: currentUser.nama,
+    jenisIzin: jenis,
+    tglMulai: tglMulai,
+    tglSelesai: tglSelesai,
+    alasan: alasan,
+    lampiranBase64: base64Data
+  };
+
+  const res = await callGAS('submitIzin', { payload: payload });
+  
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin';
+
+  if (res && res.success) {
+    alert(res.message);
+    switchTab('beranda');
+    loadData();
+  } else {
+    alert(res ? res.message : 'Gagal mengirim pengajuan izin.');
+  }
+}
+
+function convertFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    var reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
 }
