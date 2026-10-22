@@ -505,23 +505,29 @@ async function submitPengajuanIzinPage() {
   }
 
   if (jenis === 'Sakit' && (!fileInput.files || fileInput.files.length === 0)) {
-    return alert('Untuk izin Sakit, Anda wajib mengunggah Surat Dokter!');
+    return alert('Untuk izin Sakit, Anda wajib mengunggah Surat Dokter dalam format PDF!');
+  }
+
+  var base64Data = null;
+  if (fileInput.files && fileInput.files.length > 0) {
+    var file = fileInput.files[0];
+    
+    // Validasi Format PDF
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      return alert('Format file tidak valid! Lampiran hanya menerima file berformat PDF.');
+    }
+
+    // Validasi Ukuran Maksimal 2 MB
+    if (file.size > 2 * 1024 * 1024) {
+      return alert('Ukuran file terlalu besar! Maksimal ukuran file adalah 2 MB.');
+    }
+
+    base64Data = await convertFileToBase64(file);
   }
 
   var btn = document.getElementById('btnSubmitIzinPage');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Pengajuan...';
-
-  var base64Data = null;
-  if (fileInput.files && fileInput.files.length > 0) {
-    var file = fileInput.files[0];
-    if (file.size > 2 * 1024 * 1024) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin';
-      return alert('Ukuran file terlalu besar! Maksimal 2 MB.');
-    }
-    base64Data = await convertFileToBase64(file);
-  }
 
   var payload = {
     nip: currentUser.nip,
