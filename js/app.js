@@ -635,23 +635,25 @@ function convertFileToBase64(file) {
   });
 }
 
-// ==================== HELPER CALL GAS ====================
-function callGAS(functionName, arg) {
-  return new Promise(function(resolve, reject) {
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-      console.warn("Google Apps Script environment tidak terdeteksi (Mode Lokal/Browser biasa).");
-      // Simulasi lokal jika diperlukan untuk testing statis
-      resolve({ success: false, message: 'Google Apps Script environment tidak aktif.' });
-      return;
-    }
+var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjpa3M38gw53jiMJNUslPkBJz3lt2eGCyCMDn83gOavl1T6zq380jJRA3Lg-Y_XY4Q-w/exec"; 
 
-    google.script.run
-      .withSuccessHandler(function(result) {
-        resolve(result);
-      })
-      .withFailureHandler(function(error) {
-        console.error("GAS Error pada " + functionName + ":", error);
-        reject(error);
-      })[functionName](arg);
+function callGAS(actionName, payloadData) {
+  return fetch(GAS_API_URL, {
+    method: 'POST',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({
+      action: actionName,
+      payload: payloadData
+    })
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .catch(function(error) {
+    console.error("Fetch Error pada " + actionName + ":", error);
+    return { success: false, message: 'Koneksi ke server gagal: ' + error.toString() };
   });
 }
