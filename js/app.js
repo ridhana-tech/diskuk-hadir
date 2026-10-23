@@ -54,12 +54,12 @@ window.onload = function() {
 
   // Arahkan sesuai peran pengguna
   if (currentUser.role === 'ATASAN') {
-    window.location.replace('atasan.html');
+    window.location.replace('atasan/atasan.html');
     return;
   }
 
   if (currentUser.role === 'ADMIN') {
-    window.location.replace('admin.html');
+    window.location.replace('admin/admin.html');
     return;
   }
 
@@ -361,12 +361,12 @@ async function prosesLoginFrontend() {
 
     // Arahkan berdasarkan role
     if (currentUser.role === 'ATASAN') {
-      window.location.href = 'atasan.html';
+      window.location.href = 'atasan/atasan.html';
       return;
     }
 
     if (currentUser.role === 'ADMIN') {
-      window.location.href = 'admin.html';
+      window.location.href = 'admin/admin.html';
       return;
     }
 
