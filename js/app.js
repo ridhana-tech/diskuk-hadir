@@ -20,134 +20,6 @@ var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 jam
 var lokasiPegawaiValid = false;
 var sedangMemintaLokasi = false;
 
-function tampilkanLocationGate(pesan) {
-  lokasiPegawaiValid = false;
-
-  var gate = document.getElementById('locationGate');
-  var message = document.getElementById('locationGateMessage');
-
-  if (message) message.textContent = pesan;
-  if (gate) gate.classList.remove('hidden');
-
-  var berandaLokasi = document.getElementById('berandaLokasi');
-  var statusLokasi = document.getElementById('statusLokasi');
-  var radiusBadge = document.getElementById('radiusBadge');
-
-  if (berandaLokasi) {
-    berandaLokasi.textContent = 'Lokasi belum tersedia';
-  }
-  if (statusLokasi) {
-    statusLokasi.textContent = 'Izin lokasi wajib diberikan';
-  }
-  if (radiusBadge) {
-    radiusBadge.textContent = 'Belum valid';
-    radiusBadge.className =
-      'text-[9px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700';
-  }
-}
-
-function mintaLokasiPegawai() {
-  if (sedangMemintaLokasi) return;
-
-  if (!navigator.geolocation) {
-    tampilkanLocationGate(
-      'Browser ini tidak mendukung GPS. Silakan gunakan browser yang mendukung lokasi.'
-    );
-    return;
-  }
-
-  if (!window.isSecureContext) {
-    tampilkanLocationGate(
-      'Akses lokasi memerlukan koneksi HTTPS. Buka aplikasi melalui alamat HTTPS.'
-    );
-    return;
-  }
-
-  sedangMemintaLokasi = true;
-
-  var btn = document.getElementById('btnRetryLocation');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Mendeteksi lokasi...';
-  }
-
-  var statusLokasi = document.getElementById('statusLokasi');
-  if (statusLokasi) statusLokasi.textContent = 'Sedang meminta koordinat GPS...';
-
-  navigator.geolocation.getCurrentPosition(
-    function(position) {
-      currentLat = position.coords.latitude;
-      currentLng = position.coords.longitude;
-      lokasiPegawaiValid = true;
-      sedangMemintaLokasi = false;
-
-      var akurasi = Math.round(position.coords.accuracy);
-
-      var berandaLokasi = document.getElementById('berandaLokasi');
-      var status = document.getElementById('statusLokasi');
-      var badge = document.getElementById('radiusBadge');
-      var gate = document.getElementById('locationGate');
-
-      if (berandaLokasi) {
-        berandaLokasi.textContent =
-          currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
-      }
-
-      if (status) {
-        status.textContent = 'GPS berhasil diperoleh • Akurasi sekitar ' +
-          akurasi + ' meter';
-      }
-
-      if (badge) {
-        badge.textContent = 'GPS Aktif';
-        badge.className =
-          'text-[9px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700';
-      }
-
-      if (gate) gate.classList.add('hidden');
-
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML =
-          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Aktifkan / Coba Lagi';
-      }
-
-      // Jika peta sudah dibuat, pusatkan pada lokasi terbaru.
-      if (typeof map !== 'undefined' && map !== null) {
-        map.invalidateSize();
-        map.setView([currentLat, currentLng], 17);
-      }
-    },
-
-    function(error) {
-      sedangMemintaLokasi = false;
-
-      var pesan = 'Lokasi gagal diperoleh. Aktifkan layanan lokasi lalu coba lagi.';
-
-      if (error.code === 1) {
-        pesan = 'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini melalui pengaturan browser, kemudian tekan Coba Lagi.';
-      } else if (error.code === 2) {
-        pesan = 'Posisi tidak tersedia. Aktifkan GPS atau layanan lokasi perangkat, lalu coba lagi.';
-      } else if (error.code === 3) {
-        pesan = 'Pengambilan lokasi melewati batas waktu. Pastikan GPS aktif, lalu coba lagi.';
-      }
-
-      tampilkanLocationGate(pesan);
-
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML =
-          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Coba Lagi';
-      }
-    },
-
-    {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 0
-    }
-  );
-}
 
 // ==================== INITIALIZATION ====================
 window.onload = function() {
@@ -205,6 +77,167 @@ window.onload = function() {
   initAppWithUser(currentUser);
 };
 
+function tampilkanLocationGate(pesan) {
+  lokasiPegawaiValid = false;
+
+  var gate = document.getElementById('locationGate');
+  var message = document.getElementById('locationGateMessage');
+
+  if (message) message.textContent = pesan;
+  if (gate) gate.classList.remove('hidden');
+
+  var berandaLokasi = document.getElementById('berandaLokasi');
+  var statusLokasi = document.getElementById('statusLokasi');
+  var radiusBadge = document.getElementById('radiusBadge');
+
+  if (berandaLokasi) {
+    berandaLokasi.textContent = 'Lokasi belum tersedia';
+  }
+  if (statusLokasi) {
+    statusLokasi.textContent = 'Izin lokasi wajib diberikan';
+  }
+  if (radiusBadge) {
+    radiusBadge.textContent = 'Belum valid';
+    radiusBadge.className =
+      'text-[9px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700';
+  }
+}
+
+function mintaLokasiPegawai() {
+  if (sedangMemintaLokasi) return;
+
+  if (!navigator.geolocation) {
+    tampilkanLocationGate(
+      'Browser ini tidak mendukung GPS. Silakan gunakan browser yang mendukung lokasi.'
+    );
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    tampilkanLocationGate(
+      'Akses lokasi memerlukan koneksi HTTPS. Buka aplikasi melalui alamat HTTPS.'
+    );
+    return;
+  }
+
+  sedangMemintaLokasi = true;
+
+  var btn = document.getElementById('btnRetryLocation');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Mendeteksi lokasi...';
+  }
+
+  var statusLokasi = document.getElementById('statusLokasi');
+  if (statusLokasi) statusLokasi.textContent = 'Sedang meminta koordinat GPS...';
+
+  navigator.geolocation.getCurrentPosition(
+    
+    async function(position) {
+      currentLat = position.coords.latitude;
+      currentLng = position.coords.longitude;
+      lokasiPegawaiValid = true;
+      sedangMemintaLokasi = false;
+
+      var akurasi = Math.round(position.coords.accuracy);
+
+      var berandaLokasi = document.getElementById('berandaLokasi');
+      var status = document.getElementById('statusLokasi');
+      var badge = document.getElementById('radiusBadge');
+      var gate = document.getElementById('locationGate');
+      var btn = document.getElementById('btnRetryLocation');
+
+      if (berandaLokasi) {
+        berandaLokasi.textContent = 'Mencari alamat lokasi...';
+      }
+
+      if (status) {
+        status.textContent = 'GPS aktif • Akurasi sekitar ' +
+          akurasi + ' meter';
+      }
+
+      if (badge) {
+        badge.textContent = 'GPS Aktif';
+        badge.className =
+          'text-[9px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700';
+      }
+
+      if (gate) gate.classList.add('hidden');
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Aktifkan / Coba Lagi';
+      }
+
+      // Pusatkan peta jika sudah tersedia.
+      if (typeof map !== 'undefined' && map !== null) {
+        map.invalidateSize();
+        map.setView([currentLat, currentLng], 17);
+      }
+
+      // Konversi GPS menjadi nama jalan dan wilayah.
+      try {
+        var alamat = await konversiKoordinatKeAlamat(
+          currentLat,
+          currentLng
+        );
+
+        if (berandaLokasi) {
+          berandaLokasi.textContent = alamat;
+        }
+
+        if (status) {
+          status.textContent =
+            'Alamat berhasil ditemukan • Akurasi GPS sekitar ' +
+            akurasi + ' meter';
+        }
+      } catch (error) {
+        console.error('Gagal mendapatkan alamat:', error);
+
+        if (berandaLokasi) {
+          berandaLokasi.textContent =
+            'Alamat belum dapat ditampilkan';
+        }
+
+        if (status) {
+          status.textContent =
+            'GPS aktif, tetapi informasi alamat gagal dimuat.';
+        }
+      }
+    },
+
+    function(error) {
+      sedangMemintaLokasi = false;
+
+      var pesan = 'Lokasi gagal diperoleh. Aktifkan layanan lokasi lalu coba lagi.';
+
+      if (error.code === 1) {
+        pesan = 'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini melalui pengaturan browser, kemudian tekan Coba Lagi.';
+      } else if (error.code === 2) {
+        pesan = 'Posisi tidak tersedia. Aktifkan GPS atau layanan lokasi perangkat, lalu coba lagi.';
+      } else if (error.code === 3) {
+        pesan = 'Pengambilan lokasi melewati batas waktu. Pastikan GPS aktif, lalu coba lagi.';
+      }
+
+      tampilkanLocationGate(pesan);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Coba Lagi';
+      }
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    }
+  );
+}
+
+
 // Fungsi pembantu untuk menampilkan Halaman Login
 function showLoginPage() {
   var pageLogin = document.getElementById('pageLogin');
@@ -212,6 +245,43 @@ function showLoginPage() {
 
   if (pageLogin) pageLogin.classList.remove('hidden');
   if (pagePegawai) pagePegawai.classList.add('hidden');
+}
+
+async function konversiKoordinatKeAlamat(lat, lng) {
+  const url =
+    `https://nominatim.openstreetmap.org/reverse` +
+    `?format=jsonv2` +
+    `&lat=${encodeURIComponent(lat)}` +
+    `&lon=${encodeURIComponent(lng)}` +
+    `&zoom=18` +
+    `&addressdetails=1` +
+    `&accept-language=id`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Gagal mengambil informasi alamat.');
+  }
+
+  const data = await response.json();
+  const a = data.address || {};
+
+  const jalan = a.road || a.pedestrian || a.residential || '';
+  const wilayah = [
+    a.hamlet || a.village || a.suburb || a.neighbourhood,
+    a.city_district || a.district || a.county,
+    a.city || a.town || a.municipality || a.regency,
+    a.state
+  ].filter(Boolean);
+
+  const bagianAlamat = [
+    jalan,
+    ...wilayah
+  ].filter((item, index, arr) => arr.indexOf(item) === index);
+
+  return bagianAlamat.length
+    ? bagianAlamat.join(', ')
+    : (data.display_name || 'Alamat tidak ditemukan');
 }
 
 // ==================== PROSES LOGIN FRONTEND ====================
@@ -327,7 +397,6 @@ async function prosesLoginFrontend() {
   }
 }
 
-
 function getFrontendShiftHours(shiftName) {
   var upper = (shiftName || '').toString().toUpperCase();
   if (upper.indexOf('PAGI') !== -1 || upper === 'S01') {
@@ -375,7 +444,7 @@ async function initAppWithUser(user) {
   );
 
   mintaLokasiPegawai();
-  
+
   document.getElementById('pageLogin').classList.add('hidden');
   document.getElementById('pagePegawai').classList.remove('hidden');
   
