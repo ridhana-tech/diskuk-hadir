@@ -83,63 +83,118 @@ function showLoginPage() {
 }
 
 // ==================== PROSES LOGIN FRONTEND ====================
+
 async function prosesLoginFrontend() {
-  var nipInput = document.getElementById('loginNip').value.trim();
-  var passInput = document.getElementById('loginPassword').value.trim();
+  const nipInput = document.getElementById('loginNip').value.trim();
+  const passInput = document.getElementById('loginPassword').value.trim();
 
   if (!nipInput || !passInput) {
-    return alert('NIP dan Password wajib diisi!');
+    alert('NIP dan Password wajib diisi!');
+    return;
   }
 
-  // Generate atau ambil ID unik perangkat/browser untuk parameter deviceImei
-  var deviceImei = localStorage.getItem('device_unique_id');
+  // ID unik perangkat/browser
+  let deviceImei = localStorage.getItem('device_unique_id');
+
   if (!deviceImei) {
-    deviceImei = 'WEB-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    deviceImei =
+      'WEB-' +
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
+
     localStorage.setItem('device_unique_id', deviceImei);
   }
 
-  var btn = event.target;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+  const btn =
+  document.querySelector('#loginForm button[onclick="prosesLoginFrontend()"]')
+  || document.querySelector('#pageLogin button[onclick="prosesLoginFrontend()"]');
+
+  const originalText = btn ? btn.innerHTML : 'Masuk Aplikasi';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+  }
 
   try {
-    // Memanggil fungsi 'processLogin' yang ada di backend Code.gs
-    const res = await callGAS('processLogin', { 
-      nip: nipInput, 
-      password: passInput, 
-      deviceImei: deviceImei 
+    const res = await callGAS('processLogin', {
+      nip: nipInput,
+      password: passInput,
+      deviceImei: deviceImei
     });
 
-    btn.disabled = false;
-    btn.innerHTML = 'Masuk Aplikasi';
+    console.log('Respons API login:', res);
 
-    if (res && res.success) {
-      // Buat masa berlaku sesi 12 jam sejak login berhasil
-      currentUser._sessionExpiresAt = Date.now() + SESSION_DURATION_MS;
-
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-      if (currentUser.role === 'ATASAN') {
-        window.location.href = 'atasan.html';
-        return;
-      } else if (currentUser.role === 'ADMIN') {
-        window.location.href = 'admin.html';
-        return;
-      }
-
-      // Sembunyikan halaman login, tampilkan halaman pegawai & muat data
-      document.getElementById('pageLogin').classList.add('hidden');
-      document.getElementById('pagePegawai').classList.remove('hidden');
-      initAppWithUser(currentUser);
-    } else {
-      alert(res ? res.message : 'Gagal login, periksa kembali NIP dan Password.');
+    if (!res || !res.success) {
+      alert(
+        res && res.message
+          ? res.message
+          : 'Login gagal. Periksa kembali NIP dan Password.'
+      );
+      return;
     }
+
+    // Sesuaikan dengan struktur respons backend
+    const userData = res.user || res.data;
+
+    if (!userData || typeof userData !== 'object' || Array.isArray(userData)) {
+      console.error('Data pengguna tidak valid:', res);
+      alert(
+        'Login berhasil diproses, tetapi data pengguna tidak ditemukan. ' +
+        'Periksa struktur respons fungsi processLogin di Code.gs.'
+      );
+      return;
+    }
+
+    // Pastikan objek pengguna valid sebelum menambahkan masa berlaku sesi
+    const expiresAt = Date.now() + SESSION_DURATION_MS;
+
+    currentUser = {
+      ...userData,
+      _sessionExpiresAt: expiresAt
+    };
+
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+    // Arahkan berdasarkan role
+    if (currentUser.role === 'ATASAN') {
+      window.location.href = 'atasan.html';
+      return;
+    }
+
+    if (currentUser.role === 'ADMIN') {
+      window.location.href = 'admin.html';
+      return;
+    }
+
+    // Tampilkan halaman pegawai
+    const pageLogin = document.getElementById('pageLogin');
+    const pagePegawai = document.getElementById('pagePegawai');
+
+    if (!pageLogin || !pagePegawai) {
+      console.error('Elemen halaman login atau pegawai tidak ditemukan.');
+      alert('Elemen halaman aplikasi tidak ditemukan. Periksa struktur index.html.');
+      return;
+    }
+
+    pageLogin.classList.add('hidden');
+    pagePegawai.classList.remove('hidden');
+
+    initAppWithUser(currentUser);
+
   } catch (e) {
-    btn.disabled = false;
-    btn.innerHTML = 'Masuk Aplikasi';
+    console.error('Kesalahan login:', e);
     alert('Terjadi kesalahan koneksi ke server: ' + e.toString());
+
+  } finally {
+    if (btn && document.contains(btn)) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   }
 }
+
 
 function getFrontendShiftHours(shiftName) {
   var upper = (shiftName || '').toString().toUpperCase();
