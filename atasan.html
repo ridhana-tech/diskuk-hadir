@@ -243,16 +243,27 @@
       document.getElementById('filterTahun').value = now.getFullYear();
 
       var savedUser = localStorage.getItem('currentUser');
-      if (savedUser) {
-        try {
-          currentAtasanUser = JSON.parse(savedUser);
-        } catch (e) {
-          console.error("Gagal parse user:", e);
-        }
+
+      if (!savedUser) {
+        window.location.replace('index.html');
+        return;
       }
 
-      if (!currentAtasanUser) {
-        currentAtasanUser = { role: 'ATASAN', nama: 'ANJAR TRI PUTRANTO, S.Sos., M.M.', nip: '199022', jabatan: 'KEPALA SUB BAGIAN UMUM', noHp: '-', ttl: '-' };
+      try {
+        currentAtasanUser = JSON.parse(savedUser);
+      } catch (e) {
+        currentAtasanUser = null;
+      }
+
+      if (
+        !currentAtasanUser ||
+        currentAtasanUser.role !== 'ATASAN' ||
+        !currentAtasanUser._sessionExpiresAt ||
+        Date.now() >= Number(currentAtasanUser._sessionExpiresAt)
+      ) {
+        localStorage.removeItem('currentUser');
+        window.location.replace('index.html');
+        return;
       }
 
       document.getElementById('headerNamaAtasan').innerText = currentAtasanUser.nama;
@@ -323,7 +334,8 @@
 
     function logoutAtasan() {
       localStorage.removeItem('currentUser');
-      window.location.href = 'index.html';
+      sessionStorage.removeItem('currentUser');
+      window.location.replace('index.html');
     }
 
     function populatePegawaiDropdown() {

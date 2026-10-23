@@ -15,23 +15,62 @@ var rawLogsData = [];
 var currentFilterType = '1bulan';
 
 var namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 jam
 
 // ==================== INITIALIZATION ====================
 window.onload = function() {
-  // Selalu tampilkan halaman login saat aplikasi pertama dibuka
-  currentUser = null;
+  var savedUser = localStorage.getItem('currentUser');
+  var user = null;
 
-  var pageLogin = document.getElementById('pageLogin');
-  var pagePegawai = document.getElementById('pagePegawai');
+  if (savedUser) {
+    try {
+      user = JSON.parse(savedUser);
 
-  if (pageLogin) pageLogin.classList.remove('hidden');
-  if (pagePegawai) pagePegawai.classList.add('hidden');
+      // Sesi tidak ada, tidak valid, atau sudah kedaluwarsa
+      if (
+        !user ||
+        !user._sessionExpiresAt ||
+        Date.now() >= Number(user._sessionExpiresAt)
+      ) {
+        user = null;
+      }
+    } catch (e) {
+      user = null;
+    }
+  }
 
-  // Hentikan penggunaan sesi lama untuk auto-login
-  localStorage.removeItem('currentUser');
+  if (!user) {
+    localStorage.removeItem('currentUser');
+    currentUser = null;
+    showLoginPage();
+    return;
+  }
 
-  // GPS baru dimulai setelah pengguna berhasil login,
-  // jika memang dibutuhkan oleh aplikasi.
+  currentUser = user;
+
+  // Arahkan sesuai peran pengguna
+  if (currentUser.role === 'ATASAN') {
+    window.location.replace('atasan.html');
+    return;
+  }
+
+  if (currentUser.role === 'ADMIN') {
+    window.location.replace('admin.html');
+    return;
+  }
+
+  if (currentUser.role !== 'PEGAWAI') {
+    localStorage.removeItem('currentUser');
+    currentUser = null;
+    showLoginPage();
+    return;
+  }
+
+  // Sesi valid: masuk ke aplikasi Pegawai
+  document.getElementById('pageLogin').classList.add('hidden');
+  document.getElementById('pagePegawai').classList.remove('hidden');
+
+  initAppWithUser(currentUser);
 };
 
 // Fungsi pembantu untuk menampilkan Halaman Login
@@ -75,7 +114,9 @@ async function prosesLoginFrontend() {
     btn.innerHTML = 'Masuk Aplikasi';
 
     if (res && res.success) {
-      currentUser = res.user;
+      // Buat masa berlaku sesi 12 jam sejak login berhasil
+      currentUser._sessionExpiresAt = Date.now() + SESSION_DURATION_MS;
+
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
       if (currentUser.role === 'ATASAN') {
@@ -827,15 +868,18 @@ function logout() {
   localStorage.removeItem('currentUser');
   sessionStorage.removeItem('currentUser');
 
-  // Bersihkan data pengguna aktif
   currentUser = null;
 
-  // Tampilkan kembali halaman login
-  showLoginPage();
+  // Hentikan kamera jika sedang aktif
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
+    mediaStream = null;
+  }
 
-  // Bersihkan form login jika tersedia
-  var formLogin = document.getElementById('formLogin');
-  if (formLogin) formLogin.reset();
+  // Kembali ke halaman login dengan membersihkan tampilan lama
+  window.location.replace('index.html');
 }
 
 var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjpa3M38gw53jiMJNUslPkBJz3lt2eGCyCMDn83gOavl1T6zq380jJRA3Lg-Y_XY4Q-w/exec"; 
