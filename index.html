@@ -45,43 +45,6 @@
   <!-- ==================== HALAMAN UTAMA PEGAWAI (AWALNYA TERSEMBUNYI) ==================== -->
   <div id="pagePegawai" class="hidden min-h-screen flex flex-col justify-between">
     
-    <!-- HEADER / PROFIL PEGAWAI -->
-    <!-- <header class="bg-[#1D4ED8] text-white px-4 pt-4 pb-4 rounded-b-2xl shadow-md">
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0 flex-1">
-          <p class="text-[9px] uppercase tracking-widest text-blue-200 font-semibold mb-1">
-            Presensi Pegawai
-          </p>
-
-          <h1 id="headerNama" class="text-base font-bold leading-tight truncate">
-            Memuat Nama...
-          </h1>
-
-          <p id="headerJabatan" class="text-[11px] text-blue-200 mt-0.5 truncate">
-            Memuat Jabatan...
-          </p>
-
-          <p id="headerInfo" class="text-[10px] text-slate-300 mt-1.5">
-            NIP: - | Shift: -
-          </p>
-        </div>
-
-        <div class="shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
-          <i class="fa-solid fa-user text-base text-white"></i>
-        </div>
-      </div>
-
-      <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2 text-[10px] text-blue-100">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-        <span>Sistem Presensi PJLP</span>
-
-        <span class="ml-auto bg-white/10 px-2.5 py-1 rounded-md font-semibold tracking-wide">
-          PJLP
-        </span>
-      </div>
-    </header> -->
-
-
     <!-- KONTEN UTAMA (TAB & HALAMAN) -->
     <main class="flex-1 overflow-y-auto pb-24">
       
@@ -560,6 +523,36 @@
         <span class="text-[10px] font-semibold mt-1">Akun</span>
       </button>
     </nav>
+
+    <!-- Panel wajib mengaktifkan lokasi -->
+    <div id="locationGate"
+        class="hidden fixed inset-0 z-[9999] bg-slate-100 flex items-center justify-center p-6">
+
+      <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-xl border border-slate-200">
+
+        <div class="w-16 h-16 rounded-2xl bg-blue-700 text-white flex items-center justify-center mx-auto mb-4 text-2xl">
+          <i class="fa-solid fa-location-dot"></i>
+        </div>
+
+        <h2 class="text-lg font-extrabold text-slate-800">
+          Aktifkan Lokasi
+        </h2>
+
+        <p id="locationGateMessage"
+          class="text-sm text-slate-500 mt-3">
+          Presensi PJLP memerlukan izin lokasi. Silakan aktifkan lokasi untuk melanjutkan.
+        </p>
+
+        <button type="button"
+                id="btnRetryLocation"
+                onclick="mintaLokasiPegawai()"
+                class="w-full mt-5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm py-3 rounded-xl">
+          <i class="fa-solid fa-location-crosshairs mr-2"></i>
+          Aktifkan / Coba Lagi
+        </button>
+
+      </div>
+    </div>
 
   </div><!-- END PAGE PEGAWAI -->
 

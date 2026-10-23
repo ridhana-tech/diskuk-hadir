@@ -17,6 +17,138 @@ var currentFilterType = '1bulan';
 var namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 jam
 
+var lokasiPegawaiValid = false;
+var sedangMemintaLokasi = false;
+
+function tampilkanLocationGate(pesan) {
+  lokasiPegawaiValid = false;
+
+  var gate = document.getElementById('locationGate');
+  var message = document.getElementById('locationGateMessage');
+
+  if (message) message.textContent = pesan;
+  if (gate) gate.classList.remove('hidden');
+
+  var berandaLokasi = document.getElementById('berandaLokasi');
+  var statusLokasi = document.getElementById('statusLokasi');
+  var radiusBadge = document.getElementById('radiusBadge');
+
+  if (berandaLokasi) {
+    berandaLokasi.textContent = 'Lokasi belum tersedia';
+  }
+  if (statusLokasi) {
+    statusLokasi.textContent = 'Izin lokasi wajib diberikan';
+  }
+  if (radiusBadge) {
+    radiusBadge.textContent = 'Belum valid';
+    radiusBadge.className =
+      'text-[9px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700';
+  }
+}
+
+function mintaLokasiPegawai() {
+  if (sedangMemintaLokasi) return;
+
+  if (!navigator.geolocation) {
+    tampilkanLocationGate(
+      'Browser ini tidak mendukung GPS. Silakan gunakan browser yang mendukung lokasi.'
+    );
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    tampilkanLocationGate(
+      'Akses lokasi memerlukan koneksi HTTPS. Buka aplikasi melalui alamat HTTPS.'
+    );
+    return;
+  }
+
+  sedangMemintaLokasi = true;
+
+  var btn = document.getElementById('btnRetryLocation');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Mendeteksi lokasi...';
+  }
+
+  var statusLokasi = document.getElementById('statusLokasi');
+  if (statusLokasi) statusLokasi.textContent = 'Sedang meminta koordinat GPS...';
+
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      currentLat = position.coords.latitude;
+      currentLng = position.coords.longitude;
+      lokasiPegawaiValid = true;
+      sedangMemintaLokasi = false;
+
+      var akurasi = Math.round(position.coords.accuracy);
+
+      var berandaLokasi = document.getElementById('berandaLokasi');
+      var status = document.getElementById('statusLokasi');
+      var badge = document.getElementById('radiusBadge');
+      var gate = document.getElementById('locationGate');
+
+      if (berandaLokasi) {
+        berandaLokasi.textContent =
+          currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
+      }
+
+      if (status) {
+        status.textContent = 'GPS berhasil diperoleh • Akurasi sekitar ' +
+          akurasi + ' meter';
+      }
+
+      if (badge) {
+        badge.textContent = 'GPS Aktif';
+        badge.className =
+          'text-[9px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700';
+      }
+
+      if (gate) gate.classList.add('hidden');
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Aktifkan / Coba Lagi';
+      }
+
+      // Jika peta sudah dibuat, pusatkan pada lokasi terbaru.
+      if (typeof map !== 'undefined' && map !== null) {
+        map.invalidateSize();
+        map.setView([currentLat, currentLng], 17);
+      }
+    },
+
+    function(error) {
+      sedangMemintaLokasi = false;
+
+      var pesan = 'Lokasi gagal diperoleh. Aktifkan layanan lokasi lalu coba lagi.';
+
+      if (error.code === 1) {
+        pesan = 'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini melalui pengaturan browser, kemudian tekan Coba Lagi.';
+      } else if (error.code === 2) {
+        pesan = 'Posisi tidak tersedia. Aktifkan GPS atau layanan lokasi perangkat, lalu coba lagi.';
+      } else if (error.code === 3) {
+        pesan = 'Pengambilan lokasi melewati batas waktu. Pastikan GPS aktif, lalu coba lagi.';
+      }
+
+      tampilkanLocationGate(pesan);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-location-crosshairs mr-2"></i>Coba Lagi';
+      }
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    }
+  );
+}
+
 // ==================== INITIALIZATION ====================
 window.onload = function() {
   var savedUser = localStorage.getItem('currentUser');
@@ -238,6 +370,12 @@ function checkAndApplyWeekendButtonState() {
 }
 
 async function initAppWithUser(user) {
+  tampilkanLocationGate(
+    'Sedang memeriksa lokasi perangkat Anda. Izinkan akses lokasi untuk menggunakan aplikasi.'
+  );
+
+  mintaLokasiPegawai();
+  
   document.getElementById('pageLogin').classList.add('hidden');
   document.getElementById('pagePegawai').classList.remove('hidden');
   
@@ -794,37 +932,79 @@ async function loadData() {
 }
 
 // ==================== NAVIGASI TAB & FORM IZIN ====================
+
 function switchTab(tab) {
   activeTab = tab;
-  var allTabs = ['beranda', 'rekap', 'presensi', 'logbook', 'akun', 'form-izin'];
-  
+
+  var allTabs = [
+    'beranda',
+    'rekap',
+    'presensi',
+    'logbook',
+    'akun',
+    'form-izin'
+  ];
+
+  // 1. Sembunyikan semua konten tab
   allTabs.forEach(function(t) {
     var el = document.getElementById('tab-' + t);
-    if (el) el.classList.add('hidden');
+    if (el) {
+      el.classList.add('hidden');
+    }
   });
 
+  // 2. Tampilkan konten tab yang dipilih
   var targetTab = document.getElementById('tab-' + tab);
   if (targetTab) {
     targetTab.classList.remove('hidden');
   }
 
-  // Khusus saat tab presensi dibuka (lewat tombol finger)
+  // 3. Perbarui warna navigasi tab utama
+  var navTabs = ['beranda', 'rekap', 'logbook', 'akun'];
+
+  navTabs.forEach(function(t) {
+    var navButton = document.getElementById('nav-' + t);
+
+    if (!navButton) return;
+
+    if (t === tab) {
+      navButton.classList.remove('text-slate-400');
+      navButton.classList.add('text-blue-700');
+    } else {
+      navButton.classList.remove('text-blue-700');
+      navButton.classList.add('text-slate-400');
+    }
+  });
+
+  // 4. Khusus tab Presensi, perbarui peta
   if (tab === 'presensi') {
     setTimeout(function() {
       if (typeof initMap === 'function') {
         initMap();
       }
+
       if (typeof map !== 'undefined' && map !== null) {
-        map.invalidateSize(); // Menyegarkan ukuran peta agar muncul normal
-        if (typeof currentLat !== 'undefined' && typeof currentLng !== 'undefined' && currentLat && currentLng) {
+        map.invalidateSize();
+
+        if (
+          typeof currentLat !== 'undefined' &&
+          typeof currentLng !== 'undefined' &&
+          currentLat &&
+          currentLng
+        ) {
           map.setView([currentLat, currentLng], 17);
         }
       }
     }, 250);
   }
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // 5. Kembali ke posisi atas
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
 }
+
 
 // Navigasi & Logika Form Pengajuan Izin
 function openPageIzin() {
