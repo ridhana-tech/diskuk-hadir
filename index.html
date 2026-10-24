@@ -497,33 +497,57 @@
     </main>
 
     <!-- BOTTOM NAVIGATION (4 TAB UTAMA) -->
-    <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 h-16 flex justify-around items-center px-2">
-      <button onclick="switchTab('beranda')" id="nav-beranda" class="flex flex-col items-center justify-center text-blue-700 w-16">
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto
+                z-40 h-16 grid grid-cols-5 items-center
+                bg-white border-t border-slate-200 px-1">
+
+      <!-- Beranda -->
+      <button onclick="switchTab('beranda')" id="nav-beranda"
+        class="w-full h-full flex flex-col items-center justify-center
+              text-blue-700">
         <i class="fa-solid fa-house text-base"></i>
         <span class="text-[10px] font-semibold mt-1">Beranda</span>
       </button>
-      <button onclick="switchTab('rekap')" id="nav-rekap" class="flex flex-col items-center justify-center text-slate-400 w-16">
+
+      <!-- Rekap -->
+      <button onclick="switchTab('rekap')" id="nav-rekap"
+        class="w-full h-full flex flex-col items-center justify-center
+              text-slate-400">
         <i class="fa-solid fa-calendar-days text-base"></i>
         <span class="text-[10px] font-semibold mt-1">Rekap</span>
       </button>
-      
-      <!-- Tombol Tengah (Finger Presensi) -->
-      <div class="relative -top-3">
-        <button onclick="handleFingerClick()" id="nav-presensi" class="w-14 h-14 bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-700/40 hover:bg-blue-800 transition">
+
+      <!-- Fingerprint: selalu di kolom tengah -->
+      <div class="w-full h-full flex items-center justify-center">
+        <button onclick="handleFingerClick()" id="nav-presensi"
+          aria-label="Buka halaman presensi"
+          class="relative -top-3 w-14 h-14 shrink-0
+                bg-[#1D4ED8] text-white rounded-full
+                flex items-center justify-center
+                shadow-lg shadow-blue-700/30
+                hover:bg-blue-800 transition">
           <i class="fa-solid fa-fingerprint text-2xl"></i>
         </button>
       </div>
 
-      <button onclick="switchTab('logbook')" id="nav-logbook" class="flex flex-col items-center justify-center text-slate-400 w-16">
+      <!-- Logbook -->
+      <button onclick="switchTab('logbook')" id="nav-logbook"
+        class="w-full h-full flex flex-col items-center justify-center
+              text-slate-400">
         <i class="fa-solid fa-book text-base"></i>
         <span class="text-[10px] font-semibold mt-1">Logbook</span>
       </button>
-      <button onclick="switchTab('akun')" id="nav-akun" class="flex flex-col items-center justify-center text-slate-400 w-16">
+
+      <!-- Akun -->
+      <button onclick="switchTab('akun')" id="nav-akun"
+        class="w-full h-full flex flex-col items-center justify-center
+              text-slate-400">
         <i class="fa-solid fa-user text-base"></i>
         <span class="text-[10px] font-semibold mt-1">Akun</span>
       </button>
-    </nav>
 
+    </nav>
     <!-- Panel wajib mengaktifkan lokasi -->
     <div id="locationGate"
         class="hidden fixed inset-0 z-[9999] bg-slate-100 flex items-center justify-center p-6">
