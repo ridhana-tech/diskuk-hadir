@@ -353,43 +353,43 @@
       </section>
 
       <!-- ==================== TAB LOGBOOK ==================== -->
-<!-- ==================== TAB LOGBOOK ==================== -->
-<section id="tab-logbook" class="hidden space-y-4 px-4 pt-4">
-  
-  <!-- Header Tab Logbook & Tombol Filter di Kanan Atas -->
-  <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-    <div>
-      <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Logbook Bulanan</h3>
-      <p class="text-[10px] text-slate-400">Laporan kinerja bulanan kepegawaian</p>
-    </div>
-    <!-- Tombol Icon Filter -->
-    <button onclick="toggleLogbookFilter()" class="w-9 h-9 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl flex items-center justify-center text-xs transition shadow-sm" title="Filter Tahun">
-      <i class="fa-solid fa-filter"></i>
-    </button>
-  </div>
+    <!-- ==================== TAB LOGBOOK ==================== -->
+    <section id="tab-logbook" class="hidden space-y-4 px-4 pt-4">
+      
+      <!-- Header Tab Logbook & Tombol Filter di Kanan Atas -->
+      <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Logbook Bulanan</h3>
+          <p class="text-[10px] text-slate-400">Laporan kinerja bulanan kepegawaian</p>
+        </div>
+        <!-- Tombol Icon Filter -->
+        <button onclick="toggleLogbookFilter()" class="w-9 h-9 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl flex items-center justify-center text-xs transition shadow-sm" title="Filter Tahun">
+          <i class="fa-solid fa-filter"></i>
+        </button>
+      </div>
 
-  <!-- Panel Filter (Muncul saat icon filter diklik) -->
-  <div id="logbookFilterPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-    <div class="flex justify-between items-center">
-      <h4 class="text-[11px] font-bold text-slate-700">Pilih Tahun Riwayat</h4>
-      <button onclick="toggleLogbookFilter()" class="text-slate-400 hover:text-slate-600 text-xs"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div>
-      <label class="block text-[10px] font-semibold text-slate-500 mb-1">Tahun</label>
-      <select id="filterTahunLogbook" onchange="renderLogbookUI()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600">
-        <option value="2026">2026</option>
-        <option value="2025">2025</option>
-        <option value="2024">2024</option>
-      </select>
-    </div>
-  </div>
+      <!-- Panel Filter (Muncul saat icon filter diklik) -->
+      <div id="logbookFilterPanel" class="hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex justify-between items-center">
+          <h4 class="text-[11px] font-bold text-slate-700">Pilih Tahun Riwayat</h4>
+          <button onclick="toggleLogbookFilter()" class="text-slate-400 hover:text-slate-600 text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold text-slate-500 mb-1">Tahun</label>
+          <select id="filterTahunLogbook" onchange="renderLogbookUI()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+        </div>
+      </div>
 
-  <!-- Container Daftar 12 Bulan (Januari - Desember) -->
-  <div class="space-y-2.5" id="logbookList">
-    <!-- Konten 12 bulan akan otomatis dirender oleh fungsi JavaScript renderLogbookUI() -->
-  </div>
+      <!-- Container Daftar 12 Bulan (Januari - Desember) -->
+      <div class="space-y-2.5" id="logbookList">
+        <!-- Konten 12 bulan akan otomatis dirender oleh fungsi JavaScript renderLogbookUI() -->
+      </div>
 
-</section>
+    </section>
 
       <!-- TAB 5: AKUN -->
     <section id="tab-akun" class="hidden space-y-4 px-4 pt-4">
@@ -558,6 +558,10 @@
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.js"></script>
+  <script src="api.js"></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/camera.js" defer></script>
+  <script src="js/map-location.js" defer></script>
+  <script src="js/app.js" defer></script>
 </body>
 </html>

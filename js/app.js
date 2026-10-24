@@ -14,37 +14,28 @@ var selectedUploadMonth = null;
 var rawLogsData = [];
 var currentFilterType = '1bulan';
 
-var namaBulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 jam
+var namaBulanIndo = [
+  "Januari", "Februari", "Maret", "April",
+  "Mei", "Juni", "Juli", "Agustus",
+  "September", "Oktober", "November", "Desember"
+];
 
+var SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
 var lokasiPegawaiValid = false;
 var sedangMemintaLokasi = false;
 
 
 // ==================== INITIALIZATION ====================
-window.onload = function() {
-  var savedUser = localStorage.getItem('currentUser');
-  var user = null;
+window.addEventListener('load', async function() {
+  var user = typeof getCurrentSessionUser === 'function'
+    ? getCurrentSessionUser()
+    : null;
 
-  if (savedUser) {
-    try {
-      user = JSON.parse(savedUser);
-
-      // Sesi tidak ada, tidak valid, atau sudah kedaluwarsa
-      if (
-        !user ||
-        !user._sessionExpiresAt ||
-        Date.now() >= Number(user._sessionExpiresAt)
-      ) {
-        user = null;
-      }
-    } catch (e) {
-      user = null;
+  if (!user || !user.token) {
+    if (typeof clearLocalSession === 'function') {
+      clearLocalSession();
     }
-  }
 
-  if (!user) {
-    localStorage.removeItem('currentUser');
     currentUser = null;
     showLoginPage();
     return;
@@ -52,31 +43,41 @@ window.onload = function() {
 
   currentUser = user;
 
-  // Arahkan sesuai peran pengguna
-  if (currentUser.role === 'ATASAN') {
+  var role = String(currentUser.role || '')
+    .trim()
+    .toUpperCase();
+
+  if (role === 'ATASAN') {
     window.location.replace('atasan/atasan.html');
     return;
   }
 
-  if (currentUser.role === 'ADMIN') {
+  if (role === 'ADMIN') {
     window.location.replace('admin/admin.html');
     return;
   }
 
-  if (currentUser.role !== 'PEGAWAI') {
-    localStorage.removeItem('currentUser');
+  if (role !== 'PEGAWAI') {
+    if (typeof clearLocalSession === 'function') {
+      clearLocalSession();
+    }
+
     currentUser = null;
     showLoginPage();
     return;
   }
 
-  // Sesi valid: masuk ke aplikasi Pegawai
-  document.getElementById('pageLogin').classList.add('hidden');
-  document.getElementById('pagePegawai').classList.remove('hidden');
+  var pageLogin = document.getElementById('pageLogin');
+  var pagePegawai = document.getElementById('pagePegawai');
 
-  initAppWithUser(currentUser);
-};
+  if (pageLogin) pageLogin.classList.add('hidden');
+  if (pagePegawai) pagePegawai.classList.remove('hidden');
 
+  await initAppWithUser(currentUser);
+});
+
+
+// ==================== LOCATION GATE ====================
 function tampilkanLocationGate(pesan) {
   lokasiPegawaiValid = false;
 
@@ -93,15 +94,18 @@ function tampilkanLocationGate(pesan) {
   if (berandaLokasi) {
     berandaLokasi.textContent = 'Lokasi belum tersedia';
   }
+
   if (statusLokasi) {
     statusLokasi.textContent = 'Izin lokasi wajib diberikan';
   }
+
   if (radiusBadge) {
     radiusBadge.textContent = 'Belum valid';
     radiusBadge.className =
       'text-[9px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700';
   }
 }
+
 
 function mintaLokasiPegawai() {
   if (sedangMemintaLokasi) return;
@@ -123,16 +127,19 @@ function mintaLokasiPegawai() {
   sedangMemintaLokasi = true;
 
   var btn = document.getElementById('btnRetryLocation');
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Mendeteksi lokasi...';
   }
 
   var statusLokasi = document.getElementById('statusLokasi');
-  if (statusLokasi) statusLokasi.textContent = 'Sedang meminta koordinat GPS...';
+
+  if (statusLokasi) {
+    statusLokasi.textContent = 'Sedang meminta koordinat GPS...';
+  }
 
   navigator.geolocation.getCurrentPosition(
-    
     async function(position) {
       currentLat = position.coords.latitude;
       currentLng = position.coords.longitude;
@@ -145,15 +152,15 @@ function mintaLokasiPegawai() {
       var status = document.getElementById('statusLokasi');
       var badge = document.getElementById('radiusBadge');
       var gate = document.getElementById('locationGate');
-      var btn = document.getElementById('btnRetryLocation');
+      var retryButton = document.getElementById('btnRetryLocation');
 
       if (berandaLokasi) {
         berandaLokasi.textContent = 'Mencari alamat lokasi...';
       }
 
       if (status) {
-        status.textContent = 'GPS aktif • Akurasi sekitar ' +
-          akurasi + ' meter';
+        status.textContent =
+          'GPS aktif • Akurasi sekitar ' + akurasi + ' meter';
       }
 
       if (badge) {
@@ -164,19 +171,17 @@ function mintaLokasiPegawai() {
 
       if (gate) gate.classList.add('hidden');
 
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML =
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.innerHTML =
           '<i class="fa-solid fa-location-crosshairs mr-2"></i>Aktifkan / Coba Lagi';
       }
 
-      // Pusatkan peta jika sudah tersedia.
       if (typeof map !== 'undefined' && map !== null) {
         map.invalidateSize();
         map.setView([currentLat, currentLng], 17);
       }
 
-      // Konversi GPS menjadi nama jalan dan wilayah.
       try {
         var alamat = await konversiKoordinatKeAlamat(
           currentLat,
@@ -210,21 +215,27 @@ function mintaLokasiPegawai() {
     function(error) {
       sedangMemintaLokasi = false;
 
-      var pesan = 'Lokasi gagal diperoleh. Aktifkan layanan lokasi lalu coba lagi.';
+      var pesan =
+        'Lokasi gagal diperoleh. Aktifkan layanan lokasi lalu coba lagi.';
 
       if (error.code === 1) {
-        pesan = 'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini melalui pengaturan browser, kemudian tekan Coba Lagi.';
+        pesan =
+          'Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini melalui pengaturan browser, kemudian tekan Coba Lagi.';
       } else if (error.code === 2) {
-        pesan = 'Posisi tidak tersedia. Aktifkan GPS atau layanan lokasi perangkat, lalu coba lagi.';
+        pesan =
+          'Posisi tidak tersedia. Aktifkan GPS atau layanan lokasi perangkat, lalu coba lagi.';
       } else if (error.code === 3) {
-        pesan = 'Pengambilan lokasi melewati batas waktu. Pastikan GPS aktif, lalu coba lagi.';
+        pesan =
+          'Pengambilan lokasi melewati batas waktu. Pastikan GPS aktif, lalu coba lagi.';
       }
 
       tampilkanLocationGate(pesan);
 
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML =
+      var retryButton = document.getElementById('btnRetryLocation');
+
+      if (retryButton) {
+        retryButton.disabled = false;
+        retryButton.innerHTML =
           '<i class="fa-solid fa-location-crosshairs mr-2"></i>Coba Lagi';
       }
     },
@@ -238,7 +249,7 @@ function mintaLokasiPegawai() {
 }
 
 
-// Fungsi pembantu untuk menampilkan Halaman Login
+// ==================== LOGIN PAGE ====================
 function showLoginPage() {
   var pageLogin = document.getElementById('pageLogin');
   var pagePegawai = document.getElementById('pagePegawai');
@@ -247,56 +258,60 @@ function showLoginPage() {
   if (pagePegawai) pagePegawai.classList.add('hidden');
 }
 
-async function konversiKoordinatKeAlamat(lat, lng) {
-  const url =
-    `https://nominatim.openstreetmap.org/reverse` +
-    `?format=jsonv2` +
-    `&lat=${encodeURIComponent(lat)}` +
-    `&lon=${encodeURIComponent(lng)}` +
-    `&zoom=18` +
-    `&addressdetails=1` +
-    `&accept-language=id`;
 
-  const response = await fetch(url);
+// ==================== REVERSE GEOCODING ====================
+async function konversiKoordinatKeAlamat(lat, lng) {
+  var url =
+    'https://nominatim.openstreetmap.org/reverse' +
+    '?format=jsonv2' +
+    '&lat=' + encodeURIComponent(lat) +
+    '&lon=' + encodeURIComponent(lng) +
+    '&zoom=18' +
+    '&addressdetails=1' +
+    '&accept-language=id';
+
+  var response = await fetch(url);
 
   if (!response.ok) {
     throw new Error('Gagal mengambil informasi alamat.');
   }
 
-  const data = await response.json();
-  const a = data.address || {};
+  var data = await response.json();
+  var a = data.address || {};
 
-  const jalan = a.road || a.pedestrian || a.residential || '';
-  const wilayah = [
+  var jalan = a.road || a.pedestrian || a.residential || '';
+
+  var wilayah = [
     a.hamlet || a.village || a.suburb || a.neighbourhood,
     a.city_district || a.district || a.county,
     a.city || a.town || a.municipality || a.regency,
     a.state
   ].filter(Boolean);
 
-  const bagianAlamat = [
+  var bagianAlamat = [
     jalan,
     ...wilayah
-  ].filter((item, index, arr) => arr.indexOf(item) === index);
+  ].filter(function(item, index, arr) {
+    return arr.indexOf(item) === index;
+  });
 
   return bagianAlamat.length
     ? bagianAlamat.join(', ')
     : (data.display_name || 'Alamat tidak ditemukan');
 }
 
-// ==================== PROSES LOGIN FRONTEND ====================
 
+// ==================== PROSES LOGIN FRONTEND ====================
 async function prosesLoginFrontend() {
-  const nipInput = document.getElementById('loginNip').value.trim();
-  const passInput = document.getElementById('loginPassword').value.trim();
+  var nipInput = document.getElementById('loginNip').value.trim();
+  var passInput = document.getElementById('loginPassword').value.trim();
 
   if (!nipInput || !passInput) {
     alert('NIP dan Password wajib diisi!');
     return;
   }
 
-  // ID unik perangkat/browser
-  let deviceImei = localStorage.getItem('device_unique_id');
+  var deviceImei = localStorage.getItem('device_unique_id');
 
   if (!deviceImei) {
     deviceImei =
@@ -307,11 +322,15 @@ async function prosesLoginFrontend() {
     localStorage.setItem('device_unique_id', deviceImei);
   }
 
-  const btn =
-  document.querySelector('#loginForm button[onclick="prosesLoginFrontend()"]')
-  || document.querySelector('#pageLogin button[onclick="prosesLoginFrontend()"]');
+  var btn =
+    document.querySelector(
+      '#loginForm button[onclick="prosesLoginFrontend()"]'
+    ) ||
+    document.querySelector(
+      '#pageLogin button[onclick="prosesLoginFrontend()"]'
+    );
 
-  const originalText = btn ? btn.innerHTML : 'Masuk Aplikasi';
+  var originalText = btn ? btn.innerHTML : 'Masuk Aplikasi';
 
   if (btn) {
     btn.disabled = true;
@@ -320,7 +339,7 @@ async function prosesLoginFrontend() {
   }
 
   try {
-    const res = await callGAS('processLogin', {
+    var res = await callGAS('processLogin', {
       nip: nipInput,
       password: passInput,
       deviceImei: deviceImei
@@ -337,11 +356,15 @@ async function prosesLoginFrontend() {
       return;
     }
 
-    // Sesuaikan dengan struktur respons backend
-    const userData = res.user || res.data;
+    var userData = res.user || res.data;
 
-    if (!userData || typeof userData !== 'object' || Array.isArray(userData)) {
+    if (
+      !userData ||
+      typeof userData !== 'object' ||
+      Array.isArray(userData)
+    ) {
       console.error('Data pengguna tidak valid:', res);
+
       alert(
         'Login berhasil diproses, tetapi data pengguna tidak ditemukan. ' +
         'Periksa struktur respons fungsi processLogin di Code.gs.'
@@ -349,74 +372,97 @@ async function prosesLoginFrontend() {
       return;
     }
 
-    // Pastikan objek pengguna valid sebelum menambahkan masa berlaku sesi
-    const expiresAt = Date.now() + SESSION_DURATION_MS;
+    var token = res.token || userData.token;
 
-    currentUser = {
-      ...userData,
-      _sessionExpiresAt: expiresAt
-    };
+    if (!token || typeof token !== 'string') {
+      console.error(
+        'Token sesi tidak ditemukan pada respons login:',
+        res
+      );
 
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      alert(
+        'Login belum dapat digunakan karena server belum mengirim token sesi. ' +
+        'Periksa fungsi processLogin di Code.gs.'
+      );
+      return;
+    }
 
-    // Arahkan berdasarkan role
-    if (currentUser.role === 'ATASAN') {
+    if (typeof saveCurrentSessionUser !== 'function') {
+      alert('Fungsi penyimpanan sesi dari api.js tidak ditemukan.');
+      return;
+    }
+
+    currentUser = saveCurrentSessionUser(userData, token);
+
+    var role = String(currentUser.role || '')
+      .trim()
+      .toUpperCase();
+
+    if (role === 'ATASAN') {
       window.location.href = 'atasan/atasan.html';
       return;
     }
 
-    if (currentUser.role === 'ADMIN') {
+    if (role === 'ADMIN') {
       window.location.href = 'admin/admin.html';
       return;
     }
 
-    // Tampilkan halaman pegawai
-    const pageLogin = document.getElementById('pageLogin');
-    const pagePegawai = document.getElementById('pagePegawai');
+    if (role !== 'PEGAWAI') {
+      if (typeof clearLocalSession === 'function') {
+        clearLocalSession();
+      }
 
-    if (!pageLogin || !pagePegawai) {
-      console.error('Elemen halaman login atau pegawai tidak ditemukan.');
-      alert('Elemen halaman aplikasi tidak ditemukan. Periksa struktur index.html.');
+      currentUser = null;
+      alert('Peran pengguna tidak dikenali.');
       return;
     }
 
-    pageLogin.classList.add('hidden');
-    pagePegawai.classList.remove('hidden');
-
-    initAppWithUser(currentUser);
-
-  } catch (e) {
-    console.error('Kesalahan login:', e);
-    alert('Terjadi kesalahan koneksi ke server: ' + e.toString());
-
+    window.location.href = 'index.html';
+  } catch (error) {
+    console.error('Kesalahan login:', error);
+    alert('Terjadi kesalahan saat login. Silakan coba kembali.');
   } finally {
-    if (btn && document.contains(btn)) {
+    if (btn) {
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
   }
 }
 
+// ==================== SHIFT & PERIODE ====================
 function getFrontendShiftHours(shiftName) {
   var upper = (shiftName || '').toString().toUpperCase();
+
   if (upper.indexOf('PAGI') !== -1 || upper === 'S01') {
-    return { jamMasuk: "06:00:00", jamPulang: "14:00:00" };
+    return { jamMasuk: '06:00:00', jamPulang: '14:00:00' };
   } else if (upper.indexOf('SIANG') !== -1 || upper === 'S02') {
-    return { jamMasuk: "14:00:00", jamPulang: "21:00:00" };
+    return { jamMasuk: '14:00:00', jamPulang: '21:00:00' };
   } else if (upper.indexOf('MALAM') !== -1 || upper === 'S03') {
-    return { jamMasuk: "21:00:00", jamPulang: "06:00:00" };
-  } else {
-    return { jamMasuk: "07:30:00", jamPulang: "16:00:00" }; // Reguler
+    return { jamMasuk: '21:00:00', jamPulang: '06:00:00' };
   }
+
+  return { jamMasuk: '07:30:00', jamPulang: '16:00:00' };
 }
 
 function initPeriodeLabel() {
   var now = new Date();
-  var dateNowStr = String(now.getDate()).padStart(2, '0') + ' ' + namaBulanIndo[now.getMonth()] + ' ' + now.getFullYear();
-  document.getElementById('periodeRekap').innerText = '01 ' + namaBulanIndo[now.getMonth()] + ' - ' + dateNowStr;
-  
-  document.getElementById('filterBulan').value = now.getMonth();
-  document.getElementById('filterTahun').value = now.getFullYear();
+  var dateNowStr =
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    namaBulanIndo[now.getMonth()] + ' ' +
+    now.getFullYear();
+
+  var periode = document.getElementById('periodeRekap');
+  var filterBulan = document.getElementById('filterBulan');
+  var filterTahun = document.getElementById('filterTahun');
+
+  if (periode) {
+    periode.innerText =
+      '01 ' + namaBulanIndo[now.getMonth()] + ' - ' + dateNowStr;
+  }
+
+  if (filterBulan) filterBulan.value = now.getMonth();
+  if (filterTahun) filterTahun.value = now.getFullYear();
 }
 
 function checkAndApplyWeekendButtonState() {
@@ -424,20 +470,29 @@ function checkAndApplyWeekendButtonState() {
 
   var now = new Date();
   var dayOfWeekToday = now.getDay();
-  var isReguler = (currentUser.shift.toString().toUpperCase().indexOf('REGULER') !== -1 || currentUser.shift.toString().toUpperCase() === 'SREG');
+  var shiftText = String(currentUser.shift || '').toUpperCase();
+  var isReguler =
+    shiftText.indexOf('REGULER') !== -1 || shiftText === 'SREG';
+
   var btnPresensi = document.getElementById('nav-presensi');
+  if (!btnPresensi) return;
 
   if (isReguler && (dayOfWeekToday === 0 || dayOfWeekToday === 6)) {
     btnPresensi.disabled = true;
-    btnPresensi.className = "absolute -top-5 bg-slate-400 text-slate-200 w-14 h-14 rounded-full shadow-md border-4 border-slate-50 flex items-center justify-center text-2xl cursor-not-allowed z-50";
-    btnPresensi.title = "Hari ini libur akhir pekan untuk pegawai Reguler";
+    btnPresensi.className =
+      'absolute -top-5 bg-slate-400 text-slate-200 w-14 h-14 rounded-full shadow-md border-4 border-slate-50 flex items-center justify-center text-2xl cursor-not-allowed z-50';
+    btnPresensi.title =
+      'Hari ini libur akhir pekan untuk pegawai Reguler';
   } else {
     btnPresensi.disabled = false;
-    btnPresensi.className = "absolute -top-5 bg-blue-700 hover:bg-blue-800 text-white w-14 h-14 rounded-full shadow-lg border-4 border-slate-50 flex items-center justify-center text-2xl transition active:scale-90 z-50";
-    btnPresensi.title = "Presensi";
+    btnPresensi.className =
+      'absolute -top-5 bg-blue-700 hover:bg-blue-800 text-white w-14 h-14 rounded-full shadow-lg border-4 border-slate-50 flex items-center justify-center text-2xl transition active:scale-90 z-50';
+    btnPresensi.title = 'Presensi';
   }
 }
 
+
+// ==================== INISIALISASI APLIKASI ====================
 async function initAppWithUser(user) {
   tampilkanLocationGate(
     'Sedang memeriksa lokasi perangkat Anda. Izinkan akses lokasi untuk menggunakan aplikasi.'
@@ -445,15 +500,27 @@ async function initAppWithUser(user) {
 
   mintaLokasiPegawai();
 
-  document.getElementById('pageLogin').classList.add('hidden');
-  document.getElementById('pagePegawai').classList.remove('hidden');
-  
-  document.getElementById('headerNama').innerText = user.nama || '-';
-  document.getElementById('headerJabatan').innerText = user.jabatan || '-';
-  document.getElementById('headerInfo').innerText =
-    'NIP: ' + (user.nip || '-') + ' | Shift: ' + (user.shift || '-');
+  var pageLogin = document.getElementById('pageLogin');
+  var pagePegawai = document.getElementById('pagePegawai');
 
-  const tanggalEl = document.getElementById('berandaTanggal');
+  if (pageLogin) pageLogin.classList.add('hidden');
+  if (pagePegawai) pagePegawai.classList.remove('hidden');
+
+  var headerNama = document.getElementById('headerNama');
+  var headerJabatan = document.getElementById('headerJabatan');
+  var headerInfo = document.getElementById('headerInfo');
+
+  if (headerNama) headerNama.innerText = user.nama || '-';
+  if (headerJabatan) headerJabatan.innerText = user.jabatan || '-';
+
+  if (headerInfo) {
+    headerInfo.innerText =
+      'NIP: ' + (user.nip || '-') +
+      ' | Shift: ' + (user.shift || '-');
+  }
+
+  var tanggalEl = document.getElementById('berandaTanggal');
+
   if (tanggalEl) {
     tanggalEl.textContent = new Intl.DateTimeFormat('id-ID', {
       weekday: 'short',
@@ -462,75 +529,125 @@ async function initAppWithUser(user) {
       year: 'numeric'
     }).format(new Date());
   }
-  
-  document.getElementById('accNama').innerText = user.nama;
-  document.getElementById('accJabatan').innerText = user.jabatan;
-  document.getElementById('accNip').innerText = user.nip;
-  document.getElementById('accAtasan').innerText = user.atasan || '-';
+
+  var accNama = document.getElementById('accNama');
+  var accJabatan = document.getElementById('accJabatan');
+  var accNip = document.getElementById('accNip');
+  var accAtasan = document.getElementById('accAtasan');
+  var accNoHp = document.getElementById('accNoHp');
+  var accTtl = document.getElementById('accTtl');
+
+  if (accNama) accNama.innerText = user.nama || '-';
+  if (accJabatan) accJabatan.innerText = user.jabatan || '-';
+  if (accNip) accNip.innerText = user.nip || '-';
+  if (accAtasan) accAtasan.innerText = user.atasan || '-';
 
   var displayHp = user.noHp || '-';
-  if (displayHp !== '-' && !displayHp.startsWith('0') && !displayHp.startsWith('+')) {
+
+  if (
+    displayHp !== '-' &&
+    !displayHp.startsWith('0') &&
+    !displayHp.startsWith('+')
+  ) {
     displayHp = '0' + displayHp;
   }
-  document.getElementById('accNoHp').innerText = displayHp;
-  document.getElementById('accTtl').innerText = user.ttl || '-';
+
+  if (accNoHp) accNoHp.innerText = displayHp;
+  if (accTtl) accTtl.innerText = user.ttl || '-';
 
   var defaultShift = getFrontendShiftHours(user.shift);
-  document.getElementById('jadwalMasuk').innerText = defaultShift.jamMasuk;
-  document.getElementById('jadwalPulang').innerText = defaultShift.jamPulang;
+  var jadwalMasuk = document.getElementById('jadwalMasuk');
+  var jadwalPulang = document.getElementById('jadwalPulang');
+
+  if (jadwalMasuk) jadwalMasuk.innerText = defaultShift.jamMasuk;
+  if (jadwalPulang) jadwalPulang.innerText = defaultShift.jamPulang;
 
   initPeriodeLabel();
   checkAndApplyWeekendButtonState();
 
-  const dataConfig = await callGAS('getAppData', { shift: user.shift });
+  var dataConfig = await callGAS('getAppData', {
+    shift: user.shift
+  });
+
   if (dataConfig && dataConfig.config) {
     appConfig = dataConfig;
+
     if (dataConfig.shiftInfo) {
-      document.getElementById('jadwalMasuk').innerText = dataConfig.shiftInfo.jamMasuk;
-      document.getElementById('jadwalPulang').innerText = dataConfig.shiftInfo.jamPulang;
+      if (jadwalMasuk) {
+        jadwalMasuk.innerText = dataConfig.shiftInfo.jamMasuk;
+      }
+
+      if (jadwalPulang) {
+        jadwalPulang.innerText = dataConfig.shiftInfo.jamPulang;
+      }
     }
   }
 
-  loadData();
+  await loadData();
 }
 
+
+// ==================== BATAS WAKTU PRESENSI ====================
 function cekBatasWaktuPresensi() {
   if (!currentUser) return;
 
-  var shiftCode = (currentUser.shift || 'SREG').toString().toUpperCase();
-  var jamMasukStr = "07:30:00";
+  var shiftCode = (currentUser.shift || 'SREG')
+    .toString()
+    .toUpperCase();
 
-  if (shiftCode.indexOf('S02') !== -1 || shiftCode.indexOf('SIANG') !== -1) {
-    jamMasukStr = "14:00:00";
-  } else if (shiftCode.indexOf('S03') !== -1 || shiftCode.indexOf('MALAM') !== -1) {
-    jamMasukStr = "21:00:00";
-  } else if (shiftCode.indexOf('S01') !== -1 || shiftCode.indexOf('PAGI') !== -1) {
-    jamMasukStr = "06:00:00";
-  } else {
-    jamMasukStr = "07:30:00";
+  var jamMasukStr = '07:30:00';
+
+  if (
+    shiftCode.indexOf('S02') !== -1 ||
+    shiftCode.indexOf('SIANG') !== -1
+  ) {
+    jamMasukStr = '14:00:00';
+  } else if (
+    shiftCode.indexOf('S03') !== -1 ||
+    shiftCode.indexOf('MALAM') !== -1
+  ) {
+    jamMasukStr = '21:00:00';
+  } else if (
+    shiftCode.indexOf('S01') !== -1 ||
+    shiftCode.indexOf('PAGI') !== -1
+  ) {
+    jamMasukStr = '06:00:00';
   }
 
   var parts = jamMasukStr.split(':');
-  var totalMenitBuka = (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10) - 30;
+  var totalMenitBuka =
+    parseInt(parts[0], 10) * 60 +
+    parseInt(parts[1], 10) - 30;
 
   var now = new Date();
-  var totalMenitSekarang = (now.getHours() * 60) + now.getMinutes();
+  var totalMenitSekarang =
+    now.getHours() * 60 + now.getMinutes();
 
   var btnPresensi = document.getElementById('btnPresensiMasuk');
   if (!btnPresensi) return;
 
   var bukaHour = Math.floor(totalMenitBuka / 60);
   var bukaMinute = totalMenitBuka % 60;
-  var jamBukaFormatted = String(bukaHour).padStart(2, '0') + ':' + String(bukaMinute).padStart(2, '0');
+
+  var jamBukaFormatted =
+    String(bukaHour).padStart(2, '0') + ':' +
+    String(bukaMinute).padStart(2, '0');
 
   if (totalMenitSekarang < totalMenitBuka) {
     btnPresensi.disabled = true;
-    btnPresensi.className = "w-full bg-slate-200 text-slate-400 font-semibold py-3.5 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2";
-    btnPresensi.innerHTML = '<i class="fa-solid fa-clock"></i> Presensi Buka Pukul ' + jamBukaFormatted + ' WIB';
+    btnPresensi.className =
+      'w-full bg-slate-200 text-slate-400 font-semibold py-3.5 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2';
+
+    btnPresensi.innerHTML =
+      '<i class="fa-solid fa-clock"></i> Presensi Buka Pukul ' +
+      jamBukaFormatted + ' WIB';
   } else {
     btnPresensi.disabled = false;
-    btnPresensi.className = "w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-700/30 transition flex items-center justify-center gap-2";
-    btnPresensi.innerHTML = '<i class="fa-solid fa-camera"></i> Lakukan Presensi Masuk';
+    btnPresensi.className =
+      'w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-700/30 transition flex items-center justify-center gap-2';
+
+    btnPresensi.innerHTML =
+      '<i class="fa-solid fa-camera"></i> Lakukan Presensi Masuk';
   }
 }
 
@@ -540,12 +657,21 @@ window.addEventListener('load', function() {
 });
 
 function handleFingerClick() {
+  if (!currentUser) {
+    alert('Silakan login terlebih dahulu.');
+    return;
+  }
+
   var now = new Date();
   var dayOfWeekToday = now.getDay();
-  var isReguler = (currentUser.shift.toString().toUpperCase().indexOf('REGULER') !== -1 || currentUser.shift.toString().toUpperCase() === 'SREG');
+  var shiftText = String(currentUser.shift || '').toUpperCase();
+
+  var isReguler =
+    shiftText.indexOf('REGULER') !== -1 || shiftText === 'SREG';
 
   if (isReguler && (dayOfWeekToday === 0 || dayOfWeekToday === 6)) {
-    return alert("Hari ini libur akhir pekan untuk pegawai Reguler!");
+    alert('Hari ini libur akhir pekan untuk pegawai Reguler!');
+    return;
   }
 
   if (activeTab !== 'presensi') {
@@ -555,77 +681,143 @@ function handleFingerClick() {
   }
 }
 
-// ==================== PANEL FILTER LOGBOOK & RENDER ====================
+
+// ==================== LOGBOOK ====================
 function toggleLogbookFilter() {
   var panel = document.getElementById('logbookFilterPanel');
+
   if (panel) {
     panel.classList.toggle('hidden');
   }
 }
 
 function openModalUpload(bulanNama, tahun) {
-  selectedUploadMonth = { bulanNama: bulanNama, tahun: tahun };
-  document.getElementById('uploadModalTitle').innerText = 'Upload Logbook ' + bulanNama + ' ' + tahun;
-  document.getElementById('fileLogbook').value = '';
-  document.getElementById('modalUploadLogbook').classList.remove('hidden');
+  selectedUploadMonth = {
+    bulanNama: bulanNama,
+    tahun: tahun
+  };
+
+  var title = document.getElementById('uploadModalTitle');
+  var fileInput = document.getElementById('fileLogbook');
+  var modal = document.getElementById('modalUploadLogbook');
+
+  if (title) {
+    title.innerText =
+      'Upload Logbook ' + bulanNama + ' ' + tahun;
+  }
+
+  if (fileInput) fileInput.value = '';
+  if (modal) modal.classList.remove('hidden');
 }
 
 function closeModalUpload() {
-  document.getElementById('modalUploadLogbook').classList.add('hidden');
+  var modal = document.getElementById('modalUploadLogbook');
+
+  if (modal) modal.classList.add('hidden');
 }
 
-function submitLogbookFile() {
+async function submitLogbookFile() {
   var fileInput = document.getElementById('fileLogbook');
-  if (!fileInput.files || fileInput.files.length === 0) return alert('Silakan pilih file PDF terlebih dahulu!');
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    alert('Silakan pilih file PDF terlebih dahulu!');
+    return;
+  }
+
+  if (!selectedUploadMonth) {
+    alert('Bulan logbook belum dipilih.');
+    return;
+  }
 
   var file = fileInput.files[0];
-  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    return alert('File harus berformat PDF!');
+
+  if (
+    file.type !== 'application/pdf' &&
+    !file.name.toLowerCase().endsWith('.pdf')
+  ) {
+    alert('File harus berformat PDF!');
+    return;
   }
+
   if (file.size > 2 * 1024 * 1024) {
-    return alert('Ukuran file terlalu besar! Maksimal 2 MB.');
+    alert('Ukuran file terlalu besar! Maksimal 2 MB.');
+    return;
   }
 
   var btn = document.getElementById('btnSubmitLogbook');
-  btn.disabled = true;
-  btn.innerText = 'Mengunggah...';
 
-  var reader = new FileReader();
-  reader.onload = async function(e) {
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = 'Mengunggah...';
+  }
+
+  try {
+    var fileData = await convertFileToBase64(file);
+
     var payload = {
       nip: currentUser.nip,
       nama: currentUser.nama,
       bulanNama: selectedUploadMonth.bulanNama,
       tahun: selectedUploadMonth.tahun,
-      fileData: e.target.result
+      fileData: fileData
     };
 
-    const res = await callGAS('uploadLogbook', { payload: payload });
-    
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Unggah File Logbook';
-    closeModalUpload();
+    var res = await callGAS('uploadLogbook', {
+      payload: payload
+    });
 
-    alert(res.message);
-    if (res.success) loadData();
-  };
-  reader.readAsDataURL(file);
+    if (res && res.success) {
+      alert(res.message || 'Logbook berhasil diunggah.');
+      closeModalUpload();
+      await loadData();
+    } else {
+      alert(
+        res && res.message
+          ? res.message
+          : 'Gagal mengunggah logbook.'
+      );
+    }
+  } catch (error) {
+    console.error('Kesalahan upload logbook:', error);
+    alert('Terjadi kesalahan saat mengunggah logbook.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML =
+        '<i class="fa-solid fa-cloud-arrow-up"></i> Unggah File Logbook';
+    }
+  }
 }
 
+function convertFileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+
+    reader.onload = function() {
+      resolve(reader.result);
+    };
+
+    reader.onerror = function(error) {
+      reject(error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+// ==================== FILTER BULAN & TAHUN ====================
 function openModalFilterBulanTahun() {
-  document.getElementById('modalFilterBulanTahun').classList.remove('hidden');
+  var modal = document.getElementById('modalFilterBulanTahun');
+  if (modal) modal.classList.remove('hidden');
 }
 
 function closeModalFilterBulanTahun() {
-  document.getElementById('modalFilterBulanTahun').classList.add('hidden');
+  var modal = document.getElementById('modalFilterBulanTahun');
+  if (modal) modal.classList.add('hidden');
 }
 
 
-/* ==========================================
-   REKAP PRESENSI PEGAWAI
-   Terhubung ke data getRekapData dari API
-========================================== */
-
+// ==================== REKAP PRESENSI ====================
 function ubahPeriodeRekap(periode) {
   var mapping = {
     'minggu-lalu': '1minggu_lalu',
@@ -651,7 +843,6 @@ function formatTanggalRekap(tanggal) {
 
   if (parts.length !== 3) return tanggal;
 
-  // Hindari pergeseran tanggal akibat parsing UTC.
   var date = new Date(
     Number(parts[0]),
     Number(parts[1]) - 1,
@@ -686,7 +877,9 @@ function renderFilteredRekap() {
 
   var now = new Date();
   var today = new Date(
-    now.getFullYear(), now.getMonth(), now.getDate()
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
   );
 
   var startDate;
@@ -694,20 +887,30 @@ function renderFilteredRekap() {
 
   if (currentFilterType === '1minggu_ini') {
     startDate = new Date(today);
+
     var day = startDate.getDay();
+
     startDate.setDate(
       startDate.getDate() - (day === 0 ? 6 : day - 1)
     );
   } else if (currentFilterType === '1minggu_lalu') {
     startDate = new Date(today);
+
     var dayLalu = startDate.getDay();
+
     startDate.setDate(
-      startDate.getDate() - (dayLalu === 0 ? 6 : dayLalu - 1) - 7
+      startDate.getDate() -
+      (dayLalu === 0 ? 6 : dayLalu - 1) - 7
     );
+
     endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 6);
   } else {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    startDate = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
   }
 
   endDate.setHours(23, 59, 59, 999);
@@ -717,12 +920,10 @@ function renderFilteredRekap() {
     return date && date >= startDate && date <= endDate;
   });
 
-  // Urutkan tanggal terbaru ke terlama.
   logs.sort(function(a, b) {
     return String(b.tanggal).localeCompare(String(a.tanggal));
   });
 
-  // Hitung ringkasan dari hasil API pada periode terpilih.
   var hadir = 0;
   var terlambat = 0;
   var izin = 0;
@@ -731,17 +932,23 @@ function renderFilteredRekap() {
     var status = String(row.statusKode || '').toUpperCase();
     var ket = String(row.ketPresensi || '').toUpperCase();
 
-    if (status === 'H' || status === 'H(T)' ||
-        status === 'H(PC)' || status === 'H(TAP)') {
+    if (
+      status === 'H' ||
+      status === 'H(T)' ||
+      status === 'H(PC)' ||
+      status === 'H(TAP)'
+    ) {
       hadir++;
     }
 
     if (status === 'H(T)') terlambat++;
 
-    if (status.indexOf('IZIN') !== -1 ||
-        status.indexOf('SAKIT') !== -1 ||
-        ket.indexOf('IZIN') !== -1 ||
-        ket.indexOf('SAKIT') !== -1) {
+    if (
+      status.indexOf('IZIN') !== -1 ||
+      status.indexOf('SAKIT') !== -1 ||
+      ket.indexOf('IZIN') !== -1 ||
+      ket.indexOf('SAKIT') !== -1
+    ) {
       izin++;
     }
   });
@@ -754,7 +961,6 @@ function renderFilteredRekap() {
   if (elTerlambat) elTerlambat.textContent = terlambat + ' hari';
   if (elIzin) elIzin.textContent = izin + ' hari';
 
-  // Perbarui informasi periode.
   var label = document.getElementById('rekapLabelPeriode');
   var rentang = document.getElementById('rekapRentangTanggal');
   var tahun = document.getElementById('rekapTahun');
@@ -765,6 +971,7 @@ function renderFilteredRekap() {
 
   if (currentFilterType === '1minggu_lalu') {
     if (label) label.textContent = '1 Minggu Lalu';
+
     if (rentang) {
       rentang.textContent =
         String(startDate.getDate()).padStart(2, '0') + ' - ' +
@@ -774,6 +981,7 @@ function renderFilteredRekap() {
     }
   } else if (currentFilterType === '1minggu_ini') {
     if (label) label.textContent = '1 Minggu';
+
     if (rentang) {
       rentang.textContent =
         String(startDate.getDate()).padStart(2, '0') + ' - ' +
@@ -782,8 +990,14 @@ function renderFilteredRekap() {
     }
   } else {
     if (label) label.textContent = '1 Bulan';
+
     if (rentang) {
-      var lastDay = new Date(tahunIni, now.getMonth() + 1, 0).getDate();
+      var lastDay = new Date(
+        tahunIni,
+        now.getMonth() + 1,
+        0
+      ).getDate();
+
       rentang.textContent =
         '01 - ' + String(lastDay).padStart(2, '0') + ' ' +
         bulan + ' ' + tahunIni;
@@ -791,14 +1005,14 @@ function renderFilteredRekap() {
   }
 
   if (tahun) tahun.textContent = 'Tahun ' + tahunIni;
+
   if (subjudul) {
     subjudul.textContent =
       currentFilterType === '1bulan'
         ? bulan + ' ' + tahunIni
-        : label.textContent;
+        : (label ? label.textContent : '');
   }
 
-  // Render daftar kartu.
   if (logs.length === 0) {
     daftar.innerHTML =
       '<div class="bg-white border border-slate-200 rounded-2xl p-6 text-center">' +
@@ -807,13 +1021,16 @@ function renderFilteredRekap() {
           'Belum ada catatan presensi pada periode ini.' +
         '</p>' +
       '</div>';
+
     return;
   }
 
   daftar.innerHTML = logs.map(function(row) {
     var status = String(row.statusKode || '-');
     var statusText = String(row.statusText || status);
-    var badge = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+
+    var badge =
+      'bg-emerald-50 text-emerald-700 border-emerald-100';
 
     if (status === 'H(T)') {
       badge = 'bg-amber-50 text-amber-700 border-amber-100';
@@ -867,7 +1084,6 @@ function renderFilteredRekap() {
   }).join('');
 }
 
-
 function applyCustomMonthYearFilter() {
   currentFilterType = 'custom';
 
@@ -876,52 +1092,111 @@ function applyCustomMonthYearFilter() {
   var btnMingguLalu = document.getElementById('btnFilterMingguLalu');
   var btnIcon = document.getElementById('btnFilterIcon');
 
-  btnBulan.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnMingguIni.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnMingguLalu.className = "flex-1 py-2 rounded-xl text-slate-600 transition";
-  btnIcon.className = "w-9 h-9 rounded-xl bg-blue-700 text-white font-bold shadow-sm flex items-center justify-center transition shrink-0";
+  if (btnBulan) {
+    btnBulan.className =
+      'flex-1 py-2 rounded-xl text-slate-600 transition';
+  }
+
+  if (btnMingguIni) {
+    btnMingguIni.className =
+      'flex-1 py-2 rounded-xl text-slate-600 transition';
+  }
+
+  if (btnMingguLalu) {
+    btnMingguLalu.className =
+      'flex-1 py-2 rounded-xl text-slate-600 transition';
+  }
+
+  if (btnIcon) {
+    btnIcon.className =
+      'w-9 h-9 rounded-xl bg-blue-700 text-white font-bold shadow-sm flex items-center justify-center transition shrink-0';
+  }
 
   closeModalFilterBulanTahun();
   renderFilteredRekap();
 }
 
+
+// ==================== MEMUAT DATA APLIKASI ====================
 async function loadData() {
   if (!currentUser) return;
 
-  const res = await callGAS('getRekapData', { user: currentUser });
+  var res = await callGAS('getRekapData', {
+    user: currentUser
+  });
+
   if (!res || !res.success) {
-    console.error('Gagal memuat rekap:', res && res.message);
+    console.error(
+      'Gagal memuat rekap:',
+      res && res.message
+    );
     return;
   }
 
   rawLogsData = res.logs || [];
   renderFilteredRekap();
+
   var uploadedLogbookList = res.logbook || [];
 
-  var countHadir = 0, countTerlambat = 0, countIzin = 0;
+  var countHadir = 0;
+  var countTerlambat = 0;
+  var countIzin = 0;
+
   var now = new Date();
-  var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+  var todayStr =
+    now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
   var dayOfWeekToday = now.getDay();
-  var isReguler = (currentUser.shift.toString().toUpperCase().indexOf('REGULER') !== -1 || currentUser.shift.toString().toUpperCase() === 'SREG');
+  var shiftText = String(currentUser.shift || '').toUpperCase();
+
+  var isReguler =
+    shiftText.indexOf('REGULER') !== -1 || shiftText === 'SREG';
 
   todayPresensiStatus.hasMasuk = false;
   todayPresensiStatus.hasPulang = false;
 
-  if (isReguler && (dayOfWeekToday === 0 || dayOfWeekToday === 6)) {
-    document.getElementById('todayJamMasuk').innerText = 'Libur';
-    document.getElementById('todayJamMasuk').className = 'text-lg font-extrabold text-red-600';
-    document.getElementById('todayJamPulang').innerText = 'Libur';
-    document.getElementById('todayJamPulang').className = 'text-lg font-extrabold text-red-600';
+  var todayJamMasuk = document.getElementById('todayJamMasuk');
+  var todayJamPulang = document.getElementById('todayJamPulang');
+
+  if (
+    isReguler &&
+    (dayOfWeekToday === 0 || dayOfWeekToday === 6)
+  ) {
+    if (todayJamMasuk) {
+      todayJamMasuk.innerText = 'Libur';
+      todayJamMasuk.className =
+        'text-lg font-extrabold text-red-600';
+    }
+
+    if (todayJamPulang) {
+      todayJamPulang.innerText = 'Libur';
+      todayJamPulang.className =
+        'text-lg font-extrabold text-red-600';
+    }
   } else {
-    document.getElementById('todayJamMasuk').innerText = '--:--:--';
-    document.getElementById('todayJamMasuk').className = 'text-lg font-extrabold text-emerald-900';
-    document.getElementById('todayJamPulang').innerText = '--:--:--';
-    document.getElementById('todayJamPulang').className = 'text-lg font-extrabold text-amber-900';
+    if (todayJamMasuk) {
+      todayJamMasuk.innerText = '--:--:--';
+      todayJamMasuk.className =
+        'text-lg font-extrabold text-emerald-900';
+    }
+
+    if (todayJamPulang) {
+      todayJamPulang.innerText = '--:--:--';
+      todayJamPulang.className =
+        'text-lg font-extrabold text-amber-900';
+    }
   }
 
   rawLogsData.forEach(function(row) {
     var rowDate = new Date(row.tanggal);
-    if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) {
+
+    if (
+      rowDate.getMonth() === now.getMonth() &&
+      rowDate.getFullYear() === now.getFullYear()
+    ) {
       if (row.hadir === 'H') countHadir++;
       if (row.terlambat === '(T)') countTerlambat++;
       if (row.izin && row.izin !== '-') countIzin++;
@@ -930,78 +1205,137 @@ async function loadData() {
     if (row.tanggal && row.tanggal.startsWith(todayStr)) {
       if (row.tipe === 'MASUK') {
         todayPresensiStatus.hasMasuk = true;
-        document.getElementById('todayJamMasuk').innerText = row.jamMasuk || '--:--:--';
+
+        if (todayJamMasuk) {
+          todayJamMasuk.innerText = row.jamMasuk || '--:--:--';
+        }
       }
+
       if (row.tipe === 'PULANG') {
         todayPresensiStatus.hasPulang = true;
-        document.getElementById('todayJamPulang').innerText = row.jamPulang || '--:--:--';
+
+        if (todayJamPulang) {
+          todayJamPulang.innerText = row.jamPulang || '--:--:--';
+        }
       }
     }
   });
 
-  document.getElementById('statHadir').innerText = countHadir + ' hari';
-  document.getElementById('statTerlambat').innerText = countTerlambat + ' hari';
-  document.getElementById('statIzin').innerText = countIzin + ' hari';
+  var statHadir = document.getElementById('statHadir');
+  var statTerlambat = document.getElementById('statTerlambat');
+  var statIzin = document.getElementById('statIzin');
+
+  if (statHadir) statHadir.innerText = countHadir + ' hari';
+  if (statTerlambat) statTerlambat.innerText = countTerlambat + ' hari';
+  if (statIzin) statIzin.innerText = countIzin + ' hari';
 
   renderFilteredRekap();
 
-  // RENDER LOGBOOK: 12 Bulan penuh dengan filter tahun
-  var selectedTahun = document.getElementById('filterTahunLogbook') ? document.getElementById('filterTahunLogbook').value : now.getFullYear().toString();
+  var filterTahunLogbook = document.getElementById('filterTahunLogbook');
+
+  var selectedTahun = filterTahunLogbook
+    ? filterTahunLogbook.value
+    : now.getFullYear().toString();
+
   var currentMonthIdx = now.getMonth();
   var currentYearNum = now.getFullYear();
   var htmlLogbook = '';
 
   namaBulanIndo.forEach(function(bulanName, m) {
-    var isCurrentMonth = (m === currentMonthIdx && parseInt(selectedTahun) === currentYearNum);
-    var isPastMonth = (parseInt(selectedTahun) < currentYearNum) || (parseInt(selectedTahun) === currentYearNum && m < currentMonthIdx);
+    var isCurrentMonth =
+      m === currentMonthIdx &&
+      parseInt(selectedTahun, 10) === currentYearNum;
+
+    var isPastMonth =
+      parseInt(selectedTahun, 10) < currentYearNum ||
+      (
+        parseInt(selectedTahun, 10) === currentYearNum &&
+        m < currentMonthIdx
+      );
 
     var existingFile = uploadedLogbookList.find(function(item) {
-      return item.bulan && item.bulan.toLowerCase() === bulanName.toLowerCase() && 
-             item.tahun.toString() === selectedTahun.toString();
+      return (
+        item.bulan &&
+        item.bulan.toLowerCase() === bulanName.toLowerCase() &&
+        item.tahun.toString() === selectedTahun.toString()
+      );
     });
 
-    var hasFile = existingFile && existingFile.fileUrl && existingFile.fileUrl !== '#';
+    var hasFile =
+      existingFile &&
+      existingFile.fileUrl &&
+      existingFile.fileUrl !== '#';
 
-    htmlLogbook += '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">' +
-      '<div>' +
-        '<p class="font-bold text-slate-800 text-xs">Logbook ' + bulanName + ' ' + selectedTahun + '</p>' +
-        '<p class="text-[10px] text-slate-400">' + 
-          (isCurrentMonth ? 'Bulan Berjalan (Aktif)' : (hasFile ? 'Sudah Diunggah' : (isPastMonth ? 'Bulan Terlewat' : 'Mendatang'))) + 
-        '</p>' +
-      '</div>';
+    htmlLogbook +=
+      '<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">' +
+        '<div>' +
+          '<p class="font-bold text-slate-800 text-xs">Logbook ' +
+            bulanName + ' ' + selectedTahun + '</p>' +
+          '<p class="text-[10px] text-slate-400">' +
+            (
+              isCurrentMonth
+                ? 'Bulan Berjalan (Aktif)'
+                : (
+                    hasFile
+                      ? 'Sudah Diunggah'
+                      : (
+                          isPastMonth
+                            ? 'Bulan Terlewat'
+                            : 'Mendatang'
+                        )
+                  )
+            ) +
+          '</p>' +
+        '</div>' +
+        '<div class="flex items-center gap-1.5">';
 
-    htmlLogbook += '<div class="flex items-center gap-1.5">';
-    
     if (hasFile) {
-      htmlLogbook += '<a href="' + existingFile.fileUrl + '" target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-bold text-xs border border-blue-200 flex items-center gap-1">' +
-        '<i class="fa-solid fa-file-pdf"></i> Lihat' +
-      '</a>';
-      
+      htmlLogbook +=
+        '<a href="' + existingFile.fileUrl +
+        '" target="_blank" rel="noopener noreferrer" ' +
+        'class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-bold text-xs border border-blue-200 flex items-center gap-1">' +
+          '<i class="fa-solid fa-file-pdf"></i> Lihat' +
+        '</a>';
+
       if (isCurrentMonth) {
-        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + selectedTahun + ')" class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-xl font-bold text-xs border border-amber-200" title="Ganti File">' +
-          '<i class="fa-solid fa-pen-to-square"></i>' +
-        '</button>';
+        htmlLogbook +=
+          '<button type="button" onclick="openModalUpload(\'' +
+          bulanName + '\', ' + selectedTahun + ')" ' +
+          'class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-xl font-bold text-xs border border-amber-200" title="Ganti File">' +
+            '<i class="fa-solid fa-pen-to-square"></i>' +
+          '</button>';
       }
-    } else {
-      if (isCurrentMonth) {
-        htmlLogbook += '<button type="button" onclick="openModalUpload(\'' + bulanName + '\', ' + selectedTahun + ')" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1">' +
+    } else if (isCurrentMonth) {
+      htmlLogbook +=
+        '<button type="button" onclick="openModalUpload(\'' +
+        bulanName + '\', ' + selectedTahun + ')" ' +
+        'class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1">' +
           '<i class="fa-solid fa-cloud-arrow-up"></i> Upload' +
         '</button>';
-      } else if (isPastMonth) {
-        htmlLogbook += '<span class="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">Tidak Diunggah</span>';
-      } else {
-        htmlLogbook += '<span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">Belum Waktunya</span>';
-      }
+    } else if (isPastMonth) {
+      htmlLogbook +=
+        '<span class="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">' +
+          'Tidak Diunggah' +
+        '</span>';
+    } else {
+      htmlLogbook +=
+        '<span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">' +
+          'Belum Waktunya' +
+        '</span>';
     }
 
     htmlLogbook += '</div></div>';
   });
 
-  document.getElementById('logbookList').innerHTML = htmlLogbook;
+  var logbookList = document.getElementById('logbookList');
+
+  if (logbookList) {
+    logbookList.innerHTML = htmlLogbook;
+  }
 }
 
-// ==================== NAVIGASI TAB & FORM IZIN ====================
 
+// ==================== NAVIGASI TAB ====================
 function switchTab(tab) {
   activeTab = tab;
 
@@ -1014,21 +1348,18 @@ function switchTab(tab) {
     'form-izin'
   ];
 
-  // 1. Sembunyikan semua konten tab
   allTabs.forEach(function(t) {
     var el = document.getElementById('tab-' + t);
-    if (el) {
-      el.classList.add('hidden');
-    }
+
+    if (el) el.classList.add('hidden');
   });
 
-  // 2. Tampilkan konten tab yang dipilih
   var targetTab = document.getElementById('tab-' + tab);
+
   if (targetTab) {
     targetTab.classList.remove('hidden');
   }
 
-  // 3. Perbarui warna navigasi tab utama
   var navTabs = ['beranda', 'rekap', 'logbook', 'akun'];
 
   navTabs.forEach(function(t) {
@@ -1045,7 +1376,6 @@ function switchTab(tab) {
     }
   });
 
-  // 4. Khusus tab Presensi, perbarui peta
   if (tab === 'presensi') {
     setTimeout(function() {
       if (typeof initMap === 'function') {
@@ -1055,19 +1385,13 @@ function switchTab(tab) {
       if (typeof map !== 'undefined' && map !== null) {
         map.invalidateSize();
 
-        if (
-          typeof currentLat !== 'undefined' &&
-          typeof currentLng !== 'undefined' &&
-          currentLat &&
-          currentLng
-        ) {
+        if (currentLat && currentLng) {
           map.setView([currentLat, currentLng], 17);
         }
       }
     }, 250);
   }
 
-  // 5. Kembali ke posisi atas
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
@@ -1075,136 +1399,176 @@ function switchTab(tab) {
 }
 
 
-// Navigasi & Logika Form Pengajuan Izin
+// ==================== FORM PENGAJUAN IZIN ====================
 function openPageIzin() {
-  document.getElementById('izinJenisPage').value = '';
-  document.getElementById('izinTglMulaiPage').value = '';
-  document.getElementById('izinTglSelesaiPage').value = '';
-  document.getElementById('izinAlasanPage').value = '';
-  document.getElementById('izinLampiranPage').value = '';
+  var ids = [
+    'izinJenisPage',
+    'izinTglMulaiPage',
+    'izinTglSelesaiPage',
+    'izinAlasanPage',
+    'izinLampiranPage'
+  ];
+
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
   handleJenisIzinPageChange();
   switchTab('form-izin');
 }
 
 function handleJenisIzinPageChange() {
-  var jenis = document.getElementById('izinJenisPage').value;
+  var jenisEl = document.getElementById('izinJenisPage');
   var labelWajib = document.getElementById('labelWajibLampiranPage');
-  if (labelWajib) {
-    if (jenis === 'Sakit') {
-      labelWajib.classList.remove('hidden');
-    } else {
-      labelWajib.classList.add('hidden');
-    }
+
+  if (!jenisEl || !labelWajib) return;
+
+  if (jenisEl.value === 'Sakit') {
+    labelWajib.classList.remove('hidden');
+  } else {
+    labelWajib.classList.add('hidden');
   }
 }
 
 async function submitPengajuanIzinPage() {
-  var jenis = document.getElementById('izinJenisPage').value;
-  var tglMulai = document.getElementById('izinTglMulaiPage').value;
-  var tglSelesai = document.getElementById('izinTglSelesaiPage').value;
-  var alasan = document.getElementById('izinAlasanPage').value;
+  var jenisEl = document.getElementById('izinJenisPage');
+  var mulaiEl = document.getElementById('izinTglMulaiPage');
+  var selesaiEl = document.getElementById('izinTglSelesaiPage');
+  var alasanEl = document.getElementById('izinAlasanPage');
   var fileInput = document.getElementById('izinLampiranPage');
 
-  if (!jenis || !tglMulai || !tglSelesai || !alasan) {
-    return alert('Harap lengkapi semua kolom yang wajib diisi!');
+  if (!jenisEl || !mulaiEl || !selesaiEl || !alasanEl || !fileInput) {
+    alert('Form pengajuan izin tidak ditemukan.');
+    return;
   }
 
-  if (jenis === 'Sakit' && (!fileInput.files || fileInput.files.length === 0)) {
-    return alert('Untuk izin Sakit, Anda wajib mengunggah Surat Dokter dalam format PDF!');
+  var jenis = jenisEl.value;
+  var tglMulai = mulaiEl.value;
+  var tglSelesai = selesaiEl.value;
+  var alasan = alasanEl.value;
+
+  if (!jenis || !tglMulai || !tglSelesai || !alasan) {
+    alert('Harap lengkapi semua kolom yang wajib diisi!');
+    return;
+  }
+
+  if (tglSelesai < tglMulai) {
+    alert('Tanggal selesai tidak boleh sebelum tanggal mulai.');
+    return;
+  }
+
+  if (
+    jenis === 'Sakit' &&
+    (!fileInput.files || fileInput.files.length === 0)
+  ) {
+    alert(
+      'Untuk izin Sakit, Anda wajib mengunggah Surat Dokter dalam format PDF!'
+    );
+    return;
   }
 
   var base64Data = null;
+
   if (fileInput.files && fileInput.files.length > 0) {
     var file = fileInput.files[0];
-    
-    // Validasi Format PDF
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      return alert('Format file tidak valid! Lampiran hanya menerima file berformat PDF.');
+
+    if (
+      file.type !== 'application/pdf' &&
+      !file.name.toLowerCase().endsWith('.pdf')
+    ) {
+      alert(
+        'Format file tidak valid! Lampiran hanya menerima file berformat PDF.'
+      );
+      return;
     }
 
-    // Validasi Ukuran Maksimal 2 MB
     if (file.size > 2 * 1024 * 1024) {
-      return alert('Ukuran file terlalu besar! Maksimal ukuran file adalah 2 MB.');
+      alert('Ukuran file terlalu besar! Maksimal ukuran file adalah 2 MB.');
+      return;
     }
 
-    base64Data = await convertFileToBase64(file);
+    try {
+      base64Data = await convertFileToBase64(file);
+    } catch (error) {
+      console.error('Gagal membaca lampiran:', error);
+      alert('Lampiran gagal dibaca. Silakan pilih file kembali.');
+      return;
+    }
   }
 
   var btn = document.getElementById('btnSubmitIzinPage');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Pengajuan...';
 
-  var payload = {
-    nip: currentUser.nip,
-    nama: currentUser.nama,
-    jenisIzin: jenis,
-    tglMulai: tglMulai,
-    tglSelesai: tglSelesai,
-    alasan: alasan,
-    lampiranBase64: base64Data
-  };
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Pengajuan...';
+  }
 
-  const res = await callGAS('submitIzin', { payload: payload });
-  
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin';
+  try {
+    var payload = {
+      nip: currentUser.nip,
+      nama: currentUser.nama,
+      jenisIzin: jenis,
+      tglMulai: tglMulai,
+      tglSelesai: tglSelesai,
+      alasan: alasan,
+      lampiranBase64: base64Data
+    };
 
-  if (res && res.success) {
-    alert(res.message);
-    switchTab('beranda');
-    loadData();
-  } else {
-    alert(res ? res.message : 'Gagal mengirim pengajuan izin.');
+    var res = await callGAS('submitIzin', {
+      payload: payload
+    });
+
+    if (res && res.success) {
+      alert(res.message || 'Pengajuan izin berhasil dikirim.');
+      switchTab('beranda');
+      await loadData();
+    } else {
+      alert(
+        res && res.message
+          ? res.message
+          : 'Gagal mengirim pengajuan izin.'
+      );
+    }
+  } catch (error) {
+    console.error('Kesalahan pengajuan izin:', error);
+    alert('Terjadi kesalahan saat mengirim pengajuan izin.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML =
+        '<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan Izin';
+    }
   }
 }
 
-function convertFileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    var reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
 
-function logout() {
-  // Hapus sesi pengguna
-  localStorage.removeItem('currentUser');
-  sessionStorage.removeItem('currentUser');
+// ==================== LOGOUT ====================
+async function logout() {
+  try {
+    if (typeof logoutUser === 'function') {
+      await logoutUser();
+    } else if (typeof clearLocalSession === 'function') {
+      clearLocalSession();
+    }
+  } catch (error) {
+    console.error('Kesalahan saat logout:', error);
+
+    if (typeof clearLocalSession === 'function') {
+      clearLocalSession();
+    }
+  }
 
   currentUser = null;
 
-  // Hentikan kamera jika sedang aktif
   if (mediaStream) {
     mediaStream.getTracks().forEach(function(track) {
       track.stop();
     });
+
     mediaStream = null;
   }
 
-  // Kembali ke halaman login dengan membersihkan tampilan lama
   window.location.replace('index.html');
-}
-
-var GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjpa3M38gw53jiMJNUslPkBJz3lt2eGCyCMDn83gOavl1T6zq380jJRA3Lg-Y_XY4Q-w/exec"; 
-
-function callGAS(actionName, payloadData) {
-  return fetch(GAS_API_URL, {
-    method: 'POST',
-    mode: 'cors',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-    },
-    body: JSON.stringify({
-      action: actionName,
-      payload: payloadData
-    })
-  })
-  .then(function(response) {
-    return response.json();
-  })
-  .catch(function(error) {
-    console.error("Fetch Error pada " + actionName + ":", error);
-    return { success: false, message: 'Koneksi ke server gagal: ' + error.toString() };
-  });
 }
